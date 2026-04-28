@@ -513,12 +513,14 @@ function aggregateGFAHierarchy(rows, dateFrom, dateTo) {
 function aggregateHyperNSAHierarchy(rows, dateFrom, dateTo) {
   var out = {};
   var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var PROD_FILTER = S.prod === 'all' ? null : S.prod;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     var dateStr = (r['일자'] || '').slice(0, 10);
     if (!dateStr) continue;
     var brKey = BRAND_MAP[(r['브랜드']||'').trim()];
     if (!brKey) continue;
+    if (PROD_FILTER && (r['제품']||'').trim() !== PROD_FILTER) continue;
     var campName = r['캠페인명'] || '';
     if (brKey === 'kitchenaid' && campName.indexOf('코드리스') !== -1) brKey = 'kitchenaid_codeless';
     var isBSA = (r['캠페인유형']||'').indexOf('브랜드검색') !== -1;
@@ -534,11 +536,13 @@ function aggregateHyperNSAHierarchy(rows, dateFrom, dateTo) {
 function aggregateHyperNGFAHierarchy(rows, dateFrom, dateTo) {
   var out = {};
   var BK = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  var PROD_FILTER = S.prod === 'all' ? null : S.prod;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     var rawDate = r['일별'] || '';
     var dateStr = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
     if (!dateStr || dateStr.length < 10) continue;
+    if (PROD_FILTER && (r['제품']||'').trim() !== PROD_FILTER) continue;
     var camp = (r['캠페인명'] || '').toLowerCase();
     var brKey = null;
     for (var k = 0; k < BK.length; k++) { if (camp.indexOf(BK[k].keyword) !== -1) { brKey = BK[k].key; break; } }
@@ -559,7 +563,7 @@ function aggregateHyperNGFAHierarchy(rows, dateFrom, dateTo) {
 
 // 계층 캠페인 데이터 가져오기
 function getCampaignHierarchy(brKey, chKey, dateFrom, dateTo) {
-  var cacheKey = 'h__' + brKey + '__' + chKey + '__' + dateFrom + '__' + dateTo;
+  var cacheKey = 'h__' + brKey + '__' + chKey + '__' + dateFrom + '__' + dateTo + '__' + S.prod;
   if (campaignCache[cacheKey]) return campaignCache[cacheKey];
   var result = {};
   if (sheetsCache.hyper) {
@@ -632,12 +636,14 @@ function aggregateGFACampaign(rows, dateFrom, dateTo) {
 function aggregateHyperNSACampaign(rows, dateFrom, dateTo) {
   var out = {};
   var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var PROD_FILTER = S.prod === 'all' ? null : S.prod;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     var dateStr = (r['일자'] || '').slice(0, 10);
     if (!dateStr) continue;
     var brKey = BRAND_MAP[(r['브랜드'] || '').trim()];
     if (!brKey) continue;
+    if (PROD_FILTER && (r['제품'] || '').trim() !== PROD_FILTER) continue;
     var campName = r['캠페인명'] || '';
     if (brKey === 'kitchenaid' && campName.indexOf('코드리스') !== -1) brKey = 'kitchenaid_codeless';
     var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
@@ -656,11 +662,13 @@ function aggregateHyperNSACampaign(rows, dateFrom, dateTo) {
 function aggregateHyperNGFACampaign(rows, dateFrom, dateTo) {
   var out = {};
   var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  var PROD_FILTER = S.prod === 'all' ? null : S.prod;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     var rawDate = r['일별'] || '';
     var dateStr = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
     if (!dateStr || dateStr.length < 10) continue;
+    if (PROD_FILTER && (r['제품'] || '').trim() !== PROD_FILTER) continue;
     var camp = (r['캠페인명'] || '').toLowerCase();
     var brKey = null;
     for (var k = 0; k < BRAND_KEYWORDS.length; k++) {
@@ -685,7 +693,7 @@ var campaignCache = {};
 
 // 브랜드+채널 → 캠페인별 데이터 반환
 function getCampaignData(brKey, chKey, dateFrom, dateTo) {
-  var cacheKey = brKey + '__' + chKey + '__' + dateFrom + '__' + dateTo;
+  var cacheKey = brKey + '__' + chKey + '__' + dateFrom + '__' + dateTo + '__' + S.prod;
   if (campaignCache[cacheKey]) return campaignCache[cacheKey];
 
   var result = {};
