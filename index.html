@@ -2915,7 +2915,7 @@ function setThisMonth(btn) {
   document.getElementById('dateTo').value   = to;
   updateLabel();
   saveDateRange();
-  sheetsCache.hyper = null; campaignCache = {};
+  campaignCache = {};
   renderWithData();
 }
 
@@ -2935,7 +2935,7 @@ function setLastMonth(btn) {
   document.getElementById('dateTo').value   = lastY + '-' + pad(lastM + 1) + '-' + pad(lastDay);
   updateLabel();
   saveDateRange();
-  sheetsCache.hyper = null; campaignCache = {};
+  campaignCache = {};
   renderWithData();
 }
 
@@ -2980,7 +2980,7 @@ function setLastWeek(btn) {
   document.getElementById('dateTo').value   = lastSunday.toISOString().slice(0, 10);
   updateLabel();
   saveDateRange();
-  sheetsCache.hyper = null; campaignCache = {};
+  campaignCache = {};
   renderWithData();
 }
 
@@ -2995,7 +2995,7 @@ function setYesterday(btn) {
   document.getElementById('dateTo').value   = d;
   updateLabel();
   saveDateRange();
-  sheetsCache.hyper = null; campaignCache = {};
+  campaignCache = {};
   renderWithData();
 }
 
@@ -3017,7 +3017,7 @@ function setTwoWeeksAgo(btn) {
   document.getElementById('dateTo').value   = twoSunday.toISOString().slice(0, 10);
   updateLabel();
   saveDateRange();
-  sheetsCache.hyper = null; campaignCache = {};
+  campaignCache = {};
   renderWithData();
 }
 
@@ -3033,7 +3033,7 @@ function setPreset(btn, days) {
   document.getElementById('dateTo').value   = yesterday.toISOString().slice(0, 10);
   updateLabel();
   saveDateRange();
-  sheetsCache.hyper = null; campaignCache = {};
+  campaignCache = {};
   renderWithData();
 }
 
@@ -3054,7 +3054,7 @@ function applyRange() {
   for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
   updateLabel();
   saveDateRange();
-  sheetsCache.hyper = null; campaignCache = {}; // 날짜 바뀌면 캐시 초기화
+  campaignCache = {}; // 날짜 바뀌면 캐시 초기화
   renderWithData();
 }
 
