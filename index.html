@@ -232,9 +232,11 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
       <button class="date-btn" onclick="setPreset(this,90)">90일</button>
     </div>
     <div class="date-input-wrap">
+      <button onclick="shiftDateRange(-1)" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;transition:all .15s" onmouseover="this.style.borderColor='var(--text)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">&#8249;</button>
       <input type="date" id="dateFrom" value="2026-02-22">
       <span class="date-sep">—</span>
       <input type="date" id="dateTo" value="2026-03-24">
+      <button onclick="shiftDateRange(1)" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;transition:all .15s" onmouseover="this.style.borderColor='var(--text)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">&#8250;</button>
     </div>
     <button class="apply-btn" onclick="applyRange()">적용</button>
   </div>
@@ -253,13 +255,6 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
   <button class="sub-tab" data-sub="kitchenaid" onclick="setSub(this,'hyper')">키친에이드</button>
   <button class="sub-tab" data-sub="ecovacs" onclick="setSub(this,'hyper')">에코백스</button>
   <button class="sub-tab" data-sub="anova" onclick="setSub(this,'hyper')">아노바</button>
-</div>
-
-<div class="filter-row" id="productFilterRow" style="display:none">
-  <span class="filter-label">제품</span>
-  <div class="tab-group" id="productTabs">
-    <button class="tab active" data-prod="all" onclick="setProd(this)">전체</button>
-  </div>
 </div>
 
 <div class="filter-row">
@@ -281,7 +276,7 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
 <div class="budget-section" id="budgetSection">
   <div class="budget-header" onclick="toggleBudgetSection()" style="cursor:pointer">
     <div style="display:flex;align-items:center;gap:8px">
-      <svg id="budgetArrow" width="14" height="14" viewBox="0 0 14 14" fill="none" style="transition:transform .2s;transform:rotate(-90deg)"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg id="budgetArrow" width="14" height="14" viewBox="0 0 14 14" fill="none" style="transition:transform .2s;transform:rotate(0deg)"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="budget-title">예산 소진 현황</span>
     </div>
     <div class="budget-period-selector" onclick="event.stopPropagation()">
@@ -289,7 +284,7 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
       <select class="budget-select" id="budgetMonthSelect" onchange="setBudgetMonth(this.value)"></select>
     </div>
   </div>
-  <div class="budget-bars" id="budgetBars" style="display:none"></div>
+  <div class="budget-bars" id="budgetBars" style="display:flex"></div>
 </div>
 
 
@@ -315,10 +310,20 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
 <div class="table-section" id="productTableSection" style="margin-bottom:16px">
   <div class="table-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
     <span>제품별 데이터</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="productPrevBtn" class="date-btn" onclick="toggleProductPrev()" style="font-size:11px;padding:4px 12px;border-radius:6px">동기간 비교</button>
+      <div style="position:relative">
+        <button class="col-dropdown-btn" id="productColDropBtn" onclick="toggleProductColDrop()">
+          컬럼 선택 <span id="productColCount"></span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-left:4px;vertical-align:middle"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="col-dropdown" id="productColDropdown" style="display:none"></div>
+      </div>
+    </div>
   </div>
   <div style="overflow-x:auto">
     <table id="productTable" style="width:100%;border-collapse:collapse">
-      <thead><tr id="productTableHead"></tr></thead>
+      <thead id="productTableHead"></thead>
       <tbody id="productTbody"></tbody>
     </table>
   </div>
@@ -740,20 +745,90 @@ function sumByDateRange(byDate, dateFrom, dateTo) {
 
 function applyHyper(apiData, dateFrom, dateTo) {
   if (!apiData) return;
+  rebuildRAW(dateFrom, dateTo);
+}
+
+// RAW/PREV를 현재 S.prod 필터에 맞게 재계산
+function rebuildRAW(dateFrom, dateTo) {
+  if (!sheetsCache.hyper) return;
   var prevRange = getPrevRange(dateFrom, dateTo);
+
   var HYPER_BRANDS = ['kitchenaid', 'ecovacs', 'anova'];
   var HYPER_CHS    = ['nsa', 'nbsa', 'ngfa'];
   for (var bi = 0; bi < HYPER_BRANDS.length; bi++) {
-    var br = HYPER_BRANDS[bi];
-    if (!RAW[br]) RAW[br] = {};
-    if (!PREV[br]) PREV[br] = {};
-    for (var ci = 0; ci < HYPER_CHS.length; ci++) {
-      var ch = HYPER_CHS[ci];
-      var key = br + '__' + ch;
-      var byDate = apiData[key] || {};
-      RAW[br][ch]  = sumByDateRange(byDate, dateFrom, dateTo);
-      PREV[br][ch] = sumByDateRange(byDate, prevRange.from, prevRange.to);
+    RAW[HYPER_BRANDS[bi]]  = {};
+    PREV[HYPER_BRANDS[bi]] = {};
+  }
+
+  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
+  var PROD_FILTER  = S.prod === 'all' ? null : S.prod;
+
+  // ── NSA rows ──
+  var nsaRows = sheetsCache.hyper._rawNSA || [];
+  for (var i = 0; i < nsaRows.length; i++) {
+    var r = nsaRows[i];
+    var d = (r['일자'] || '').slice(0, 10);
+    if (!d) continue;
+    var brKey = BRAND_MAP[(r['브랜드'] || '').trim()];
+    if (!brKey) continue;
+    if (BRAND_FILTER && brKey !== BRAND_FILTER) continue;
+    if (PROD_FILTER  && (r['제품'] || '').trim() !== PROD_FILTER) continue;
+    var camp = (r['캠페인명'] || '');
+    var bKey = (brKey === 'kitchenaid' && camp.indexOf('코드리스') !== -1) ? 'kitchenaid_codeless' : brKey;
+    var ch = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1 ? 'nbsa' : 'nsa';
+    var key = bKey + '__' + ch;
+    if (!sheetsCache.hyper[key]) sheetsCache.hyper[key] = {};
+
+    // RAW (cur)
+    var inCur  = d >= dateFrom && d <= dateTo;
+    var inPrev = d >= prevRange.from && d <= prevRange.to;
+    function addTo(target, bk, chk) {
+      if (!target[bk]) target[bk] = {};
+      if (!target[bk][chk]) target[bk][chk] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+      target[bk][chk].cost        += Number(r['총비용(vat+)'])       || 0;
+      target[bk][chk].impressions += Number(r['노출수'])              || 0;
+      target[bk][chk].clicks      += Number(r['클릭수'])              || 0;
+      target[bk][chk].conversions += Number(r['구매완료 전환수'])      || 0;
+      target[bk][chk].revenue     += Number(r['구매완료 매출액'])      || 0;
     }
+    if (inCur)  addTo(RAW,  bKey, ch);
+    if (inPrev) addTo(PREV, bKey, ch);
+  }
+
+  // ── NGFA rows ──
+  var ngfaRows = sheetsCache.hyper._rawNGFA || [];
+  var BRAND_KEYWORDS = [
+    {keyword:'키친에이드', key:'kitchenaid'},
+    {keyword:'에코백스',   key:'ecovacs'},
+    {keyword:'아노바',     key:'anova'}
+  ];
+  for (var i = 0; i < ngfaRows.length; i++) {
+    var r = ngfaRows[i];
+    var rawDate = r['일별'] || '';
+    var d = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
+    if (!d || d.length < 10) continue;
+    var camp = (r['캠페인명'] || '').toLowerCase();
+    var brKey = null;
+    for (var k = 0; k < BRAND_KEYWORDS.length; k++) {
+      if (camp.indexOf(BRAND_KEYWORDS[k].keyword) !== -1) { brKey = BRAND_KEYWORDS[k].key; break; }
+    }
+    if (!brKey) continue;
+    if (BRAND_FILTER && brKey !== BRAND_FILTER) continue;
+    if (PROD_FILTER  && (r['제품'] || '').trim() !== PROD_FILTER) continue;
+    var inCur  = d >= dateFrom && d <= dateTo;
+    var inPrev = d >= prevRange.from && d <= prevRange.to;
+    function addToNG(target, bk) {
+      if (!target[bk]) target[bk] = {};
+      if (!target[bk]['ngfa']) target[bk]['ngfa'] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+      target[bk]['ngfa'].cost        += Number((r['총비용(vat+)']||'').replace(/,/g,''))       || 0;
+      target[bk]['ngfa'].impressions += Number((r['노출수']||'').replace(/,/g,''))              || 0;
+      target[bk]['ngfa'].clicks      += Number((r['클릭수']||'').replace(/,/g,''))              || 0;
+      target[bk]['ngfa'].conversions += Number((r['구매완료 전환수']||'').replace(/,/g,''))      || 0;
+      target[bk]['ngfa'].revenue     += Number((r['구매완료 매출액']||'').replace(/,/g,''))      || 0;
+    }
+    if (inCur)  addToNG(RAW,  brKey);
+    if (inPrev) addToNG(PREV, brKey);
   }
 }
 
@@ -762,8 +837,13 @@ function renderWithData() {
   var dateFrom = document.getElementById('dateFrom').value;
   var dateTo   = document.getElementById('dateTo').value;
 
-  new Promise(function(res) { loadHyper(function(d){ applyHyper(d, dateFrom, dateTo); res(); }); })
-    .then(function() { render(); });
+  new Promise(function(res) {
+    loadHyper(function(d) {
+      if (d) rebuildRAW(dateFrom, dateTo);
+      campaignCache = {};
+      res();
+    });
+  }).then(function() { render(); });
 }
 
 // 하이퍼 네이버SA: 브랜드 컬럼 + 캠페인유형으로 분리
@@ -861,204 +941,277 @@ function loadHyper(callback) {
 
 // ── 코멘트 기능 ────────────────────────────────────────────────────────────────
 
-// 제품별 × 채널별 집계 (NSA _rawNSA + _rawNGFA 활용)
-function aggregateByProduct(dateFrom, dateTo) {
+// 브랜드 × 제품 × 채널 집계
+function aggregateByBrandProduct(dateFrom, dateTo) {
   if (!sheetsCache.hyper) return {};
   var raw = sheetsCache.hyper;
-  var out = {}; // { 제품명: { ch: {cost,revenue,clicks,impressions,conversions} } }
+  // out = { brandKey: { _total: {ch:{}}, prodName: {ch:{}} } }
+  var out = {};
 
-  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
-  var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
+  var BRAND_MAP     = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_LABEL   = {'kitchenaid':'키친에이드','ecovacs':'에코백스','anova':'아노바'};
+  var BRAND_FILTER  = S.sub === 'all' ? null : S.sub;
+  var PROD_FILTER   = S.prod === 'all' ? null : S.prod;
 
-  // NSA rows
-  var nsaRows = raw._rawNSA || [];
-  for (var i = 0; i < nsaRows.length; i++) {
-    var r = nsaRows[i];
-    var d = (r['일자'] || '').slice(0, 10);
-    if (!d || d < dateFrom || d > dateTo) continue;
-    var brKey = BRAND_MAP[(r['브랜드'] || '').trim()];
-    if (!brKey) continue;
-    if (BRAND_FILTER && brKey !== BRAND_FILTER) continue;
-    var prod = (r['제품'] || '').trim() || '(미분류)';
-    if (S.prod !== 'all' && prod !== S.prod) continue;
-    var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
-    var ch = isBSA ? 'nbsa' : 'nsa';
-    if (!out[prod]) out[prod] = {};
-    if (!out[prod][ch]) out[prod][ch] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0};
-    out[prod][ch].cost        += Number(r['총비용(vat+)']) || 0;
-    out[prod][ch].impressions += Number(r['노출수'])       || 0;
-    out[prod][ch].clicks      += Number(r['클릭수'])       || 0;
-    out[prod][ch].conversions += Number(r['구매완료 전환수']) || 0;
-    out[prod][ch].revenue     += Number(r['구매완료 매출액']) || 0;
+  function ensure(brKey, prod, ch) {
+    if (!out[brKey]) out[brKey] = {_label: BRAND_LABEL[brKey] || brKey, _total: {}};
+    if (!out[brKey]._total[ch]) out[brKey]._total[ch] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0};
+    if (!out[brKey][prod]) out[brKey][prod] = {};
+    if (!out[brKey][prod][ch]) out[brKey][prod][ch] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0};
+  }
+  function add(obj, r_cost, r_imp, r_click, r_conv, r_rev) {
+    obj.cost        += r_cost;
+    obj.impressions += r_imp;
+    obj.clicks      += r_click;
+    obj.conversions += r_conv;
+    obj.revenue     += r_rev;
   }
 
-  // NGFA rows
-  var ngfaRows = raw._rawNGFA || [];
-  var BRAND_KEYWORDS = [
-    {keyword:'키친에이드', key:'kitchenaid'},
-    {keyword:'에코백스',   key:'ecovacs'},
-    {keyword:'아노바',     key:'anova'}
-  ];
-  for (var i = 0; i < ngfaRows.length; i++) {
-    var r = ngfaRows[i];
+  // NSA
+  (raw._rawNSA || []).forEach(function(r) {
+    var d = (r['일자'] || '').slice(0, 10);
+    if (!d || d < dateFrom || d > dateTo) return;
+    var brKey = BRAND_MAP[(r['브랜드'] || '').trim()];
+    if (!brKey) return;
+    if (BRAND_FILTER && brKey !== BRAND_FILTER) return;
+    var prod = (r['제품'] || '').trim() || '(미분류)';
+    if (PROD_FILTER && prod !== PROD_FILTER) return;
+    var ch = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1 ? 'nbsa' : 'nsa';
+    ensure(brKey, prod, ch);
+    var vals = [Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0];
+    add.apply(null, [out[brKey][prod][ch]].concat(vals));
+    add.apply(null, [out[brKey]._total[ch]].concat(vals));
+  });
+
+  // NGFA
+  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  (raw._rawNGFA || []).forEach(function(r) {
     var rawDate = r['일별'] || '';
     var d = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
-    if (!d || d.length < 10 || d < dateFrom || d > dateTo) continue;
-    if (BRAND_FILTER) {
-      var camp = (r['캠페인명'] || '').toLowerCase();
-      var matched = false;
-      for (var k = 0; k < BRAND_KEYWORDS.length; k++) {
-        if (BRAND_KEYWORDS[k].key === BRAND_FILTER && camp.indexOf(BRAND_KEYWORDS[k].keyword) !== -1) { matched = true; break; }
-      }
-      if (!matched) continue;
+    if (!d || d.length < 10 || d < dateFrom || d > dateTo) return;
+    var camp = (r['캠페인명'] || '').toLowerCase();
+    var brKey = null;
+    for (var k = 0; k < BRAND_KEYWORDS.length; k++) {
+      if (camp.indexOf(BRAND_KEYWORDS[k].keyword) !== -1) { brKey = BRAND_KEYWORDS[k].key; break; }
     }
+    if (!brKey) return;
+    if (BRAND_FILTER && brKey !== BRAND_FILTER) return;
     var prod = (r['제품'] || '').trim() || '(미분류)';
-    if (S.prod !== 'all' && prod !== S.prod) continue;
-    if (!out[prod]) out[prod] = {};
-    if (!out[prod]['ngfa']) out[prod]['ngfa'] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0};
-    out[prod]['ngfa'].cost        += Number((r['총비용(vat+)']||'').replace(/,/g,'')) || 0;
-    out[prod]['ngfa'].impressions += Number((r['노출수']||'').replace(/,/g,''))        || 0;
-    out[prod]['ngfa'].clicks      += Number((r['클릭수']||'').replace(/,/g,''))        || 0;
-    out[prod]['ngfa'].conversions += Number((r['구매완료 전환수']||'').replace(/,/g,'')) || 0;
-    out[prod]['ngfa'].revenue     += Number((r['구매완료 매출액']||'').replace(/,/g,'')) || 0;
-  }
+    if (PROD_FILTER && prod !== PROD_FILTER) return;
+    ensure(brKey, prod, 'ngfa');
+    var n = function(v){ return Number((v||'').replace(/,/g,''))||0; };
+    var vals = [n(r['총비용(vat+)']), n(r['노출수']), n(r['클릭수']), n(r['구매완료 전환수']), n(r['구매완료 매출액'])];
+    add.apply(null, [out[brKey][prod]['ngfa']].concat(vals));
+    add.apply(null, [out[brKey]._total['ngfa']].concat(vals));
+  });
 
   return out;
 }
 
-// 제품 탭 동적 생성
-function buildProductTabs() {
-  if (!sheetsCache.hyper) return;
-  var raw = sheetsCache.hyper;
-  var prods = {};
-  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
-  var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
+// 펼쳐진 브랜드 상태
+var productExpandedBrands = {kitchenaid: true, ecovacs: true, anova: true};
+var productPrevMode = false;
+var productSelectedCols = ['cost','revenue','roas','conversions','cpa','cvr','clicks','cpc','ctr','impressions','cpm'];
 
-  (raw._rawNSA || []).forEach(function(r) {
-    var brKey = BRAND_MAP[(r['브랜드']||'').trim()];
-    if (!brKey) return;
-    if (BRAND_FILTER && brKey !== BRAND_FILTER) return;
-    var p = (r['제품']||'').trim();
-    if (p) prods[p] = true;
-  });
-  (raw._rawNGFA || []).forEach(function(r) {
-    var p = (r['제품']||'').trim();
-    if (!p) return;
-    if (BRAND_FILTER) {
-      var camp = (r['캠페인명']||'').toLowerCase();
-      var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
-      var matched = BRAND_KEYWORDS.some(function(bk){ return bk.key === BRAND_FILTER && camp.indexOf(bk.keyword) !== -1; });
-      if (!matched) return;
-    }
-    prods[p] = true;
-  });
-
-  var prodList = Object.keys(prods).sort();
-  var row = document.getElementById('productFilterRow');
-  var tabs = document.getElementById('productTabs');
-  if (!tabs) return;
-
-  var html = '<button class="tab' + (S.prod === 'all' ? ' active' : '') + '" data-prod="all" onclick="setProd(this)">전체</button>';
-  prodList.forEach(function(p) {
-    html += '<button class="tab' + (S.prod === p ? ' active' : '') + '" data-prod="' + p + '" onclick="setProd(this)">' + p + '</button>';
-  });
-  tabs.innerHTML = html;
-  row.style.display = prodList.length > 0 ? 'flex' : 'none';
+function toggleProductBrand(brKey) {
+  productExpandedBrands[brKey] = !productExpandedBrands[brKey];
+  renderProductTable();
 }
 
-function setProd(btn) {
-  var tabs = document.querySelectorAll('#productTabs .tab');
-  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
-  btn.classList.add('active');
-  S.prod = btn.getAttribute('data-prod');
+function toggleProductPrev() {
+  productPrevMode = !productPrevMode;
+  var btn = document.getElementById('productPrevBtn');
+  if (btn) {
+    btn.style.background  = productPrevMode ? 'var(--text)' : 'transparent';
+    btn.style.color       = productPrevMode ? 'var(--bg)'   : 'var(--muted)';
+    btn.style.borderColor = productPrevMode ? 'var(--text)' : 'var(--border2)';
+  }
   renderProductTable();
+}
+
+function buildProductColDropdown() {
+  var html = '';
+  for (var i = 0; i < TABLE_COLS.length; i++) {
+    var col = TABLE_COLS[i];
+    var active = productSelectedCols.indexOf(col.key) !== -1;
+    html += '<div class="col-item ' + (active ? 'col-active' : '') + '" onclick="event.stopPropagation();toggleProductCol(\'' + col.key + '\')">';
+    html += '<div class="col-check"></div>' + col.label + '</div>';
+  }
+  var dd = document.getElementById('productColDropdown');
+  if (dd) dd.innerHTML = html;
+  var cnt = document.getElementById('productColCount');
+  if (cnt) cnt.textContent = '(' + productSelectedCols.length + '/' + TABLE_COLS.length + ')';
+}
+
+function toggleProductColDrop() {
+  var dd = document.getElementById('productColDropdown');
+  if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleProductCol(key) {
+  var idx = productSelectedCols.indexOf(key);
+  if (idx !== -1) {
+    if (productSelectedCols.length <= 1) return;
+    productSelectedCols.splice(idx, 1);
+  } else {
+    productSelectedCols.push(key);
+    productSelectedCols.sort(function(a, b) {
+      var ai = TABLE_COLS.findIndex(function(c){ return c.key === a; });
+      var bi = TABLE_COLS.findIndex(function(c){ return c.key === b; });
+      return ai - bi;
+    });
+  }
+  buildProductColDropdown();
+  renderProductTable();
+}
+
+// 제품별 × 채널 집계 (cur/prev 분리)
+function aggregateByBrandProductPrev(dateFrom, dateTo) {
+  if (!sheetsCache.hyper) return {};
+  var prevRange = getPrevRange(dateFrom, dateTo);
+  return aggregateByBrandProductRange(prevRange.from, prevRange.to);
+}
+
+function aggregateByBrandProductRange(dateFrom, dateTo) {
+  if (!sheetsCache.hyper) return {};
+  var raw = sheetsCache.hyper;
+  var out = {};
+  var BRAND_MAP   = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_LABEL = {'kitchenaid':'키친에이드','ecovacs':'에코백스','anova':'아노바'};
+  var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
+  var PROD_FILTER  = S.prod === 'all' ? null : S.prod;
+
+  function ensure(brKey, prod) {
+    if (!out[brKey]) out[brKey] = {_label: BRAND_LABEL[brKey]||brKey, _total:{cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0}};
+    if (!out[brKey][prod]) out[brKey][prod] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+  }
+  function add(obj, r) {
+    obj.cost        += r.cost;
+    obj.revenue     += r.revenue;
+    obj.clicks      += r.clicks;
+    obj.impressions += r.impressions;
+    obj.conversions += r.conversions;
+  }
+
+  (raw._rawNSA || []).forEach(function(r) {
+    var d = (r['일자']||'').slice(0,10);
+    if (!d || d < dateFrom || d > dateTo) return;
+    var brKey = BRAND_MAP[(r['브랜드']||'').trim()];
+    if (!brKey || (BRAND_FILTER && brKey !== BRAND_FILTER)) return;
+    var prod = (r['제품']||'').trim()||'(미분류)';
+    if (PROD_FILTER && prod !== PROD_FILTER) return;
+    ensure(brKey, prod);
+    var row = {cost:Number(r['총비용(vat+)'])||0, revenue:Number(r['구매완료 매출액'])||0, clicks:Number(r['클릭수'])||0, impressions:Number(r['노출수'])||0, conversions:Number(r['구매완료 전환수'])||0};
+    add(out[brKey][prod], row);
+    add(out[brKey]._total, row);
+  });
+
+  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  (raw._rawNGFA || []).forEach(function(r) {
+    var rawDate = r['일별']||'';
+    var d = rawDate.replace(/\./g,'-').replace(/-$/,'').slice(0,10);
+    if (!d || d.length < 10 || d < dateFrom || d > dateTo) return;
+    var camp = (r['캠페인명']||'').toLowerCase();
+    var brKey = null;
+    for (var k = 0; k < BRAND_KEYWORDS.length; k++) {
+      if (camp.indexOf(BRAND_KEYWORDS[k].keyword) !== -1) { brKey = BRAND_KEYWORDS[k].key; break; }
+    }
+    if (!brKey || (BRAND_FILTER && brKey !== BRAND_FILTER)) return;
+    var prod = (r['제품']||'').trim()||'(미분류)';
+    if (PROD_FILTER && prod !== PROD_FILTER) return;
+    ensure(brKey, prod);
+    var n = function(v){ return Number((v||'').replace(/,/g,''))||0; };
+    var row = {cost:n(r['총비용(vat+)']), revenue:n(r['구매완료 매출액']), clicks:n(r['클릭수']), impressions:n(r['노출수']), conversions:n(r['구매완료 전환수'])};
+    add(out[brKey][prod], row);
+    add(out[brKey]._total, row);
+  });
+
+  return out;
 }
 
 function renderProductTable() {
   var dateFrom = document.getElementById('dateFrom').value;
   var dateTo   = document.getElementById('dateTo').value;
-  var byProd = aggregateByProduct(dateFrom, dateTo);
-  var prods = Object.keys(byProd).sort();
 
-  var ck = chKeys();
-  // 실제 데이터 있는 채널만
-  var activeChs = [];
-  var CHS_ORDER = ['nsa','nbsa','ngfa','meta','google','google_app','kakao'];
-  CHS_ORDER.forEach(function(ch) {
-    if (ck.indexOf('all') !== -1 || ck.indexOf(ch) !== -1) {
-      var hasData = prods.some(function(p){ return byProd[p][ch] && byProd[p][ch].impressions > 0; });
-      if (hasData) activeChs.push(ch);
-    }
-  });
+  var byBrand = aggregateByBrandProductRange(dateFrom, dateTo);
+  var prevData = productPrevMode ? aggregateByBrandProductPrev(dateFrom, dateTo) : null;
 
+  var BRAND_ORDER = ['kitchenaid','ecovacs','anova'];
+  var hasAny = BRAND_ORDER.some(function(br){ return !!byBrand[br]; });
   var section = document.getElementById('productTableSection');
-  if (prods.length === 0) { section.style.display = 'none'; return; }
+  if (!hasAny) { section.style.display = 'none'; return; }
   section.style.display = '';
 
+  buildProductColDropdown();
+
+  var activeCols = TABLE_COLS.filter(function(c){ return productSelectedCols.indexOf(c.key) !== -1; });
+
   // thead
-  var headHtml = '<th style="cursor:default;text-align:left">제품</th>';
-  activeChs.forEach(function(ch) {
-    headHtml += '<th colspan="3" style="text-align:center;border-left:1px solid var(--border2)">' +
-      '<span class="ch-pill ' + ch + '">' + (CH_NAME[ch] || ch) + '</span></th>';
+  var thStyle = 'padding:9px 14px;font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border2);background:var(--bg3);white-space:nowrap;text-align:right;cursor:default';
+  var headHtml = '<tr><th style="' + thStyle + ';text-align:left;min-width:180px;position:sticky;left:0;z-index:2;background:var(--bg3)">브랜드 / 제품</th>';
+  activeCols.forEach(function(col) {
+    headHtml += '<th style="' + thStyle + '">' + col.label + '</th>';
   });
-  headHtml += '<th colspan="3" style="text-align:center;border-left:2px solid var(--border2)">합계</th>';
+  headHtml += '</tr>';
+  document.getElementById('productTableHead').innerHTML = headHtml;
 
-  var subHead = '<th></th>';
-  activeChs.forEach(function() {
-    subHead += '<th style="font-size:10px;color:var(--muted);font-weight:500;border-left:1px solid var(--border2)">비용</th>' +
-               '<th style="font-size:10px;color:var(--muted);font-weight:500">전환수</th>' +
-               '<th style="font-size:10px;color:var(--muted);font-weight:500">ROAS</th>';
-  });
-  subHead += '<th style="font-size:10px;color:var(--muted);font-weight:500;border-left:2px solid var(--border2)">비용</th>' +
-             '<th style="font-size:10px;color:var(--muted);font-weight:500">전환수</th>' +
-             '<th style="font-size:10px;color:var(--muted);font-weight:500">ROAS</th>';
-
-  document.getElementById('productTableHead').innerHTML = '<tr>' + headHtml + '</tr><tr>' + subHead + '</tr>';
-
-  // tbody
   var html = '';
-  var totCost = 0, totConv = 0, totRev = 0;
 
-  prods.forEach(function(p) {
-    var pData = byProd[p];
-    var pCost = 0, pConv = 0, pRev = 0;
-    html += '<tr style="border-bottom:1px solid var(--border)">';
-    html += '<td style="font-weight:500;font-family:\'Noto Sans KR\',sans-serif">' + p + '</td>';
-    activeChs.forEach(function(ch, ci) {
-      var c = pData[ch] || {cost:0,conversions:0,revenue:0};
-      var roas = c.cost > 0 ? (c.revenue / c.cost * 100).toFixed(0) + '%' : '-';
-      var borderStyle = ci === 0 ? 'border-left:1px solid var(--border2)' : 'border-left:1px solid var(--border2)';
-      html += '<td style="' + borderStyle + '">' + fmt(c.cost,'won') + '</td>';
-      html += '<td>' + fmt(c.conversions,'num') + '</td>';
-      html += '<td>' + roas + '</td>';
-      pCost += c.cost; pConv += c.conversions; pRev += c.revenue;
+  BRAND_ORDER.forEach(function(brKey) {
+    if (!byBrand[brKey]) return;
+    var bd = byBrand[brKey];
+    var pd = prevData && prevData[brKey];
+    var isOpen = productExpandedBrands[brKey];
+    var label = bd._label;
+
+    var td = calcExtended(bd._total);
+    var ptd = pd ? calcExtended(pd._total) : null;
+
+    // 브랜드 헤더 행
+    html += '<tr onclick="toggleProductBrand(\'' + brKey + '\')" style="cursor:pointer;background:var(--bg2);border-top:2px solid var(--border2)">';
+    html += '<td style="padding:11px 14px;font-weight:700;font-size:13px;font-family:\'Noto Sans KR\',sans-serif;position:sticky;left:0;background:var(--bg2)">' +
+            '<span style="margin-right:6px;font-size:10px;opacity:.5">' + (isOpen ? '▼' : '▶') + '</span>' + label + '</td>';
+    activeCols.forEach(function(col) {
+      html += '<td style="padding:11px 14px;text-align:right;font-weight:600">' + fmt(td[col.key]||0, col.type) + '</td>';
     });
-    var pRoas = pCost > 0 ? (pRev / pCost * 100).toFixed(0) + '%' : '-';
-    html += '<td style="font-weight:600;border-left:2px solid var(--border2)">' + fmt(pCost,'won') + '</td>';
-    html += '<td style="font-weight:600">' + fmt(pConv,'num') + '</td>';
-    html += '<td style="font-weight:600">' + pRoas + '</td>';
     html += '</tr>';
-    totCost += pCost; totConv += pConv; totRev += pRev;
+
+    // 이전 동기간 브랜드 서브행
+    if (productPrevMode && ptd) {
+      html += '<tr style="background:rgba(59,125,246,0.07);border-bottom:1px solid var(--border)">';
+      html += '<td style="padding:3px 14px 6px 28px;font-size:10px;color:#3b7de9;font-weight:500;position:sticky;left:0;background:rgba(59,125,246,0.07)">↳ 이전 동기간</td>';
+      activeCols.forEach(function(col) {
+        html += '<td style="padding:3px 14px 6px;text-align:right;font-size:11px;color:#374151">' + fmt(ptd[col.key]||0, col.type) + changeArrow(td[col.key], ptd[col.key], col.type) + '</td>';
+      });
+      html += '</tr>';
+    }
+
+    // 제품 행
+    if (isOpen) {
+      var prods = Object.keys(bd).filter(function(k){ return k !== '_total' && k !== '_label'; }).sort();
+      prods.forEach(function(prod) {
+        var d2 = calcExtended(bd[prod]);
+        var p2 = pd && pd[prod] ? calcExtended(pd[prod]) : null;
+
+        html += '<tr style="border-bottom:1px solid var(--border)">';
+        html += '<td style="padding:9px 14px 9px 36px;font-size:12px;color:var(--text2);position:sticky;left:0;background:var(--bg)">' + prod + '</td>';
+        activeCols.forEach(function(col) {
+          html += '<td style="padding:9px 14px;text-align:right;font-size:12px">' + fmt(d2[col.key]||0, col.type) + '</td>';
+        });
+        html += '</tr>';
+
+        // 이전 동기간 제품 서브행
+        if (productPrevMode && p2) {
+          html += '<tr style="background:rgba(59,125,246,0.05);border-bottom:1px solid var(--border)">';
+          html += '<td style="padding:3px 14px 6px 50px;font-size:10px;color:#3b7de9;font-weight:500;position:sticky;left:0;background:rgba(59,125,246,0.05)">↳ 이전 동기간</td>';
+          activeCols.forEach(function(col) {
+            html += '<td style="padding:3px 14px 6px;text-align:right;font-size:10px;color:#374151">' + fmt(p2[col.key]||0, col.type) + changeArrow(d2[col.key], p2[col.key], col.type) + '</td>';
+          });
+          html += '</tr>';
+        }
+      });
+    }
   });
-
-  // 합계 행
-  if (prods.length > 1) {
-    var totRoas = totCost > 0 ? (totRev / totCost * 100).toFixed(0) + '%' : '-';
-    html += '<tr style="border-top:2px solid var(--border2);background:var(--bg3)">';
-    html += '<td style="font-weight:600;font-family:\'Noto Sans KR\',sans-serif;font-size:12px">합계</td>';
-    activeChs.forEach(function(ch, ci) {
-      var chCost = 0, chConv = 0, chRev = 0;
-      prods.forEach(function(p){ var c = byProd[p][ch]||{}; chCost+=c.cost||0; chConv+=c.conversions||0; chRev+=c.revenue||0; });
-      var chRoas = chCost > 0 ? (chRev/chCost*100).toFixed(0)+'%' : '-';
-      html += '<td style="font-weight:600;border-left:1px solid var(--border2)">' + fmt(chCost,'won') + '</td>';
-      html += '<td style="font-weight:600">' + fmt(chConv,'num') + '</td>';
-      html += '<td style="font-weight:600">' + chRoas + '</td>';
-    });
-    html += '<td style="font-weight:700;border-left:2px solid var(--border2)">' + fmt(totCost,'won') + '</td>';
-    html += '<td style="font-weight:700">' + fmt(totConv,'num') + '</td>';
-    html += '<td style="font-weight:700">' + totRoas + '</td>';
-    html += '</tr>';
-  }
 
   document.getElementById('productTbody').innerHTML = html;
 }
@@ -1720,6 +1873,8 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('.table-header')) {
     document.getElementById('colDropdown').style.display = 'none';
     document.getElementById('campColDropdown').style.display = 'none';
+    var pdd = document.getElementById('productColDropdown');
+    if (pdd) pdd.style.display = 'none';
   }
 });
 
@@ -1964,19 +2119,7 @@ function renderCampaignTable() {
   var NAVER_CHS = ['nsa', 'nbsa', 'ngfa'];
   var isNaverOnly = activeChs.length > 0 && activeChs.every(function(ch){ return NAVER_CHS.indexOf(ch) !== -1; });
   var isSkechersApp = S.brand === 'skechers' && S.sub === 'skechers_app';
-  var EXTRA_COLS = isNaverOnly ? [
-    {key:'conversions', label:'구매완료수',  type:'num'},
-    {key:'cart_conv',   label:'장바구니수',  type:'num'},
-    {key:'revenue',     label:'구매완료매출', type:'won'},
-    {key:'cart_rev',    label:'장바구니매출', type:'won'},
-    {key:'total_conv',  label:'총전환수',    type:'num'},
-    {key:'total_rev',   label:'총매출',      type:'won'},
-    {key:'total_cpa',   label:'총CPA',       type:'cpc'}
-  ] : isSkechersApp ? [
-    {key:'app_installs', label:'앱설치수', type:'num'},
-    {key:'cpi',          label:'CPI',      type:'cpc'},
-    {key:'install_rate', label:'설치율',   type:'pct'}
-  ] : [];
+  var EXTRA_COLS = [];
 
   // 헤더
   var thBase = 'padding:9px 14px;font-family:\'Inter\',sans-serif;font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border2);background:var(--bg3);white-space:nowrap;cursor:pointer;user-select:none';
@@ -2605,7 +2748,6 @@ function render() {
   renderKPIs(cm, pm);
   buildMetricSelector();
   renderChart(cm, ck);
-  buildProductTabs();
   renderProductTable();
   renderTable(cm, ck);
   renderCampaignTable();
@@ -2803,6 +2945,18 @@ function setPreset(btn, days) {
   renderWithData();
 }
 
+function shiftDateRange(dir) {
+  var f = new Date(document.getElementById('dateFrom').value);
+  var t = new Date(document.getElementById('dateTo').value);
+  var days = Math.round((t - f) / 86400000) + 1;
+  var ms   = days * 86400000 * dir;
+  var newFrom = new Date(f.getTime() + ms);
+  var newTo   = new Date(t.getTime() + ms);
+  document.getElementById('dateFrom').value = newFrom.toISOString().slice(0, 10);
+  document.getElementById('dateTo').value   = newTo.toISOString().slice(0, 10);
+  applyRange();
+}
+
 function applyRange() {
   var btns = document.querySelectorAll('.date-btn');
   for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
@@ -2843,11 +2997,16 @@ var BUDGET_BRAND_MAP = [
 ];
 
 // 예산 기간 상태
-var budgetPeriod = {year: '2026', month: '03'};
+var _now = new Date();
+var budgetPeriod = {
+  year:  String(_now.getFullYear()),
+  month: String(_now.getMonth() + 1).padStart(2, '0')
+};
 
 function buildBudgetPeriodSelector() {
   // 연도: 하드코딩 or 동적
-  var years = ['2026', '2027'];
+  var curYear = new Date().getFullYear();
+  var years = [String(curYear - 1), String(curYear), String(curYear + 1)];
   var monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
   var yearSel = document.getElementById('budgetYearSelect');
@@ -3232,7 +3391,7 @@ function _renderBudgetBars(ym, budgets) {
 }
 
 // 예산 소진 현황 토글
-var budgetSectionOpen = false;
+var budgetSectionOpen = true;
 function toggleBudgetSection() {
   budgetSectionOpen = !budgetSectionOpen;
   var bars   = document.getElementById('budgetBars');
