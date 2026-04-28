@@ -424,7 +424,7 @@ function aggregateNSAHierarchy(rows, dateFrom, dateTo) {
     var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
     var target = isBSA ? nbsa : nsa;
     addToHierarchy(target, r['캠페인명']||'(미분류)', r['광고그룹명']||'', null, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat-)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0,
+      Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0,
       Number(r['장바구니 전환수'])||0, Number(r['장바구니 매출액'])||0);
   }
   return {nsa: nsa, nbsa: nbsa};
@@ -439,7 +439,7 @@ function aggregateGenericHierarchy(rows, dateFrom, dateTo, creativeCol) {
     if (!dateStr) continue;
     var creative = creativeCol ? (r[creativeCol] || '') : null;
     addToHierarchy(out, r['캠페인명']||'(미분류)', r['광고그룹명']||'', creative, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat-)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0);
+      Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0);
   }
   return out;
 }
@@ -458,7 +458,7 @@ function aggregateSkechersGoogleHierarchy(rows, dateFrom, dateTo, isApp) {
     var conv    = isApp ? installs : (Number(r['총 구매수'])||0);
     var rev     = Number(r['총 매출액'])||0;
     addToHierarchy(out, r['캠페인명']||'(미분류)', r['광고그룹명']||'', null, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat-)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, conv, rev, 0, 0, installs);
+      Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, conv, rev, 0, 0, installs);
   }
   return out;
 }
@@ -474,7 +474,7 @@ function aggregateGFAHierarchy(rows, dateFrom, dateTo) {
     var isOlive = (r['광고그룹명'] || '').indexOf('올리브영') !== -1;
     var target = isOlive ? oliveyoung : minoxell;
     addToHierarchy(target, r['캠페인명']||'(미분류)', r['광고그룹명']||'', r['광고소재']||'', dateStr, dateFrom, dateTo,
-      Number((r['총비용(vat-)']||'').replace(/,/g,''))||0,
+      Number((r['총비용(vat+)']||'').replace(/,/g,''))||0,
       Number((r['노출수']||'').replace(/,/g,''))||0,
       Number((r['클릭수']||'').replace(/,/g,''))||0,
       Number((r['구매완료 전환수']||'').replace(/,/g,''))||0,
@@ -501,7 +501,7 @@ function aggregateHyperNSAHierarchy(rows, dateFrom, dateTo) {
     var storageKey = brKey + '__' + (isBSA ? 'nbsa' : 'nsa');
     if (!out[storageKey]) out[storageKey] = {};
     addToHierarchy(out[storageKey], campName||'(미분류)', r['광고그룹명']||'', null, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat-)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0);
+      Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0);
   }
   return out;
 }
@@ -522,7 +522,7 @@ function aggregateHyperNGFAHierarchy(rows, dateFrom, dateTo) {
     var storageKey = brKey + '__ngfa';
     if (!out[storageKey]) out[storageKey] = {};
     addToHierarchy(out[storageKey], r['캠페인명']||'(미분류)', r['광고그룹명']||'', r['광고소재']||'', dateStr, dateFrom, dateTo,
-      Number((r['총비용(vat-)']||'').replace(/,/g,''))||0,
+      Number((r['총비용(vat+)']||'').replace(/,/g,''))||0,
       Number((r['노출수']||'').replace(/,/g,''))||0,
       Number((r['클릭수']||'').replace(/,/g,''))||0,
       Number((r['구매완료 전환수']||'').replace(/,/g,''))||0,
@@ -560,7 +560,7 @@ function aggregateNSACampaign(rows, dateFrom, dateTo) {
     var target = isBSA ? nbsa : nsa;
     var camp = r['캠페인명'] || '(미분류)';
     addToCampaign(target, camp, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat-)']) || 0, Number(r['노출수']) || 0,
+      Number(r['총비용(vat+)'])||0, Number(r['노출수']) || 0,
       Number(r['클릭수']) || 0, Number(r['구매완료 전환수']) || 0,
       Number(r['구매완료 매출액']) || 0);
   }
@@ -576,7 +576,7 @@ function aggregateGenericCampaign(rows, dateFrom, dateTo) {
     if (!dateStr) continue;
     var camp = r['캠페인명'] || '(미분류)';
     addToCampaign(out, camp, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat-)']) || 0, Number(r['노출수']) || 0,
+      Number(r['총비용(vat+)'])||0, Number(r['노출수']) || 0,
       Number(r['클릭수']) || 0, Number(r['구매완료 전환수']) || 0,
       Number(r['구매완료 매출액']) || 0);
   }
@@ -595,7 +595,7 @@ function aggregateGFACampaign(rows, dateFrom, dateTo) {
     var target = isOlive ? oliveyoung : minoxell;
     var camp = r['캠페인명'] || '(미분류)';
     addToCampaign(target, camp, dateStr, dateFrom, dateTo,
-      Number((r['총비용(vat-)'] || '').replace(/,/g,'')) || 0,
+      Number((r['총비용(vat+)']||'').replace(/,/g,''))||0,
       Number((r['노출수'] || '').replace(/,/g,'')) || 0,
       Number((r['클릭수'] || '').replace(/,/g,'')) || 0,
       Number((r['구매완료 전환수'] || '').replace(/,/g,'')) || 0,
@@ -621,7 +621,7 @@ function aggregateHyperNSACampaign(rows, dateFrom, dateTo) {
     var storageKey = brKey + '__' + chKey;
     if (!out[storageKey]) out[storageKey] = {};
     addToCampaign(out[storageKey], campName, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat-)']) || 0, Number(r['노출수']) || 0,
+      Number(r['총비용(vat+)'])||0, Number(r['노출수']) || 0,
       Number(r['클릭수']) || 0, Number(r['구매완료 전환수']) || 0,
       Number(r['구매완료 매출액']) || 0);
   }
@@ -647,7 +647,7 @@ function aggregateHyperNGFACampaign(rows, dateFrom, dateTo) {
     if (!out[storageKey]) out[storageKey] = {};
     var campName = r['캠페인명'] || '(미분류)';
     addToCampaign(out[storageKey], campName, dateStr, dateFrom, dateTo,
-      Number((r['총비용(vat-)'] || '').replace(/,/g,'')) || 0,
+      Number((r['총비용(vat+)']||'').replace(/,/g,''))||0,
       Number((r['노출수'] || '').replace(/,/g,'')) || 0,
       Number((r['클릭수'] || '').replace(/,/g,'')) || 0,
       Number((r['구매완료 전환수'] || '').replace(/,/g,'')) || 0,
@@ -765,7 +765,7 @@ function aggregateHyperNSA(rows) {
     var storageKey = brKey + '__' + chKey;
     if (!out[storageKey]) out[storageKey] = {};
     if (!out[storageKey][dateStr]) out[storageKey][dateStr] = {date:dateStr, cost:0, impressions:0, clicks:0, conversions:0, revenue:0};
-    out[storageKey][dateStr].cost        += Number(r['총비용(vat-)'])      || 0;
+    out[storageKey][dateStr].cost        += Number(r['총비용(vat+)'])||0;
     out[storageKey][dateStr].impressions += Number(r['노출수'])             || 0;
     out[storageKey][dateStr].clicks      += Number(r['클릭수'])             || 0;
     out[storageKey][dateStr].conversions += Number(r['구매완료 전환수'])     || 0;
@@ -796,7 +796,7 @@ function aggregateHyperNGFA(rows) {
     var storageKey = brKey + '__ngfa';
     if (!out[storageKey]) out[storageKey] = {};
     if (!out[storageKey][dateStr]) out[storageKey][dateStr] = {date:dateStr, cost:0, impressions:0, clicks:0, conversions:0, revenue:0};
-    out[storageKey][dateStr].cost        += Number((r['총비용(vat-)']      || '').replace(/,/g,'')) || 0;
+    out[storageKey][dateStr].cost        += Number((r['총비용(vat+)']||'').replace(/,/g,''))||0;
     out[storageKey][dateStr].impressions += Number((r['노출수']             || '').replace(/,/g,'')) || 0;
     out[storageKey][dateStr].clicks      += Number((r['클릭수']             || '').replace(/,/g,'')) || 0;
     out[storageKey][dateStr].conversions += Number((r['구매완료 전환수']     || '').replace(/,/g,'')) || 0;
@@ -2084,7 +2084,7 @@ function renderMetaCreatives() {
     var adId  = r['광고소재 ID'] || r['광고소재'] || '(미분류)';  // ID를 키로
     var adName = r['광고소재'] || '(미분류)';                       // 이름은 표시용
     var thumb = r['이미지 URL'] || '';
-    var cost  = Number(r['총비용(vat-)']) || 0;
+    var cost  = Number(r['총비용(vat+)'])||0;
     var conv  = Number(r['구매완료 전환수']) || 0;
     var rev   = Number(r['구매완료 매출액']) || 0;
     var impr  = Number(r['노출수']) || 0;
