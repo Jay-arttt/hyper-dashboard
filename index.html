@@ -747,6 +747,64 @@ function renderWithData() {
     .then(function() { render(); });
 }
 
+// 하이퍼 네이버SA: 브랜드 컬럼 + 캠페인유형으로 분리
+function aggregateHyperNSA(rows) {
+  var out = {};
+  var BRAND_MAP = {'키친에이드': 'kitchenaid', '에코백스': 'ecovacs', '아노바': 'anova'};
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var dateStr = (r['일자'] || '').slice(0, 10);
+    if (!dateStr) continue;
+    var brandKr = (r['브랜드'] || '').trim();
+    var brKey = BRAND_MAP[brandKr];
+    if (!brKey) continue;
+    var campName = (r['캠페인명'] || '');
+    if (brKey === 'kitchenaid' && campName.indexOf('코드리스') !== -1) brKey = 'kitchenaid_codeless';
+    var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
+    var chKey = isBSA ? 'nbsa' : 'nsa';
+    var storageKey = brKey + '__' + chKey;
+    if (!out[storageKey]) out[storageKey] = {};
+    if (!out[storageKey][dateStr]) out[storageKey][dateStr] = {date:dateStr, cost:0, impressions:0, clicks:0, conversions:0, revenue:0};
+    out[storageKey][dateStr].cost        += Number(r['총비용(vat-)'])      || 0;
+    out[storageKey][dateStr].impressions += Number(r['노출수'])             || 0;
+    out[storageKey][dateStr].clicks      += Number(r['클릭수'])             || 0;
+    out[storageKey][dateStr].conversions += Number(r['구매완료 전환수'])     || 0;
+    out[storageKey][dateStr].revenue     += Number(r['구매완료 매출액'])     || 0;
+  }
+  return out;
+}
+
+// 하이퍼 네이버DA(GFA): 캠페인명으로 브랜드 구분
+function aggregateHyperNGFA(rows) {
+  var out = {};
+  var BRAND_KEYWORDS = [
+    {keyword:'키친에이드', key:'kitchenaid'},
+    {keyword:'에코백스',   key:'ecovacs'},
+    {keyword:'아노바',     key:'anova'}
+  ];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var rawDate = r['일별'] || '';
+    var dateStr = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
+    if (!dateStr || dateStr.length < 10) continue;
+    var camp = (r['캠페인명'] || '').toLowerCase();
+    var brKey = null;
+    for (var k = 0; k < BRAND_KEYWORDS.length; k++) {
+      if (camp.indexOf(BRAND_KEYWORDS[k].keyword) !== -1) { brKey = BRAND_KEYWORDS[k].key; break; }
+    }
+    if (!brKey) continue;
+    var storageKey = brKey + '__ngfa';
+    if (!out[storageKey]) out[storageKey] = {};
+    if (!out[storageKey][dateStr]) out[storageKey][dateStr] = {date:dateStr, cost:0, impressions:0, clicks:0, conversions:0, revenue:0};
+    out[storageKey][dateStr].cost        += Number((r['총비용(vat-)']      || '').replace(/,/g,'')) || 0;
+    out[storageKey][dateStr].impressions += Number((r['노출수']             || '').replace(/,/g,'')) || 0;
+    out[storageKey][dateStr].clicks      += Number((r['클릭수']             || '').replace(/,/g,'')) || 0;
+    out[storageKey][dateStr].conversions += Number((r['구매완료 전환수']     || '').replace(/,/g,'')) || 0;
+    out[storageKey][dateStr].revenue     += Number((r['구매완료 매출액']     || '').replace(/,/g,'')) || 0;
+  }
+  return out;
+}
+
 function loadHyper(callback) {
   if (sheetsCache.hyper) { callback(sheetsCache.hyper); return; }
   showLoading(true);
