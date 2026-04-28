@@ -1139,6 +1139,8 @@ function aggregateByBrandProductRange(dateFrom, dateTo) {
     obj.conversions += r.conversions;
   }
 
+  var CK = S.ch.indexOf('all') !== -1 ? null : S.ch; // null = 전체
+
   (raw._rawNSA || []).forEach(function(r) {
     var d = (r['일자']||'').slice(0,10);
     if (!d || d < dateFrom || d > dateTo) return;
@@ -1146,6 +1148,8 @@ function aggregateByBrandProductRange(dateFrom, dateTo) {
     if (!brKey || (BRAND_FILTER && brKey !== BRAND_FILTER)) return;
     var prod = (r['제품']||'').trim()||'(미분류)';
     if (PROD_FILTER && prod !== PROD_FILTER) return;
+    var ch = (r['캠페인유형']||'').indexOf('브랜드검색') !== -1 ? 'nbsa' : 'nsa';
+    if (CK && CK.indexOf(ch) === -1) return; // 매체 필터
     ensure(brKey, prod);
     var row = {cost:Number(r['총비용(vat+)'])||0, revenue:Number(r['구매완료 매출액'])||0, clicks:Number(r['클릭수'])||0, impressions:Number(r['노출수'])||0, conversions:Number(r['구매완료 전환수'])||0};
     add(out[brKey][prod], row);
@@ -1154,6 +1158,7 @@ function aggregateByBrandProductRange(dateFrom, dateTo) {
 
   var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
   (raw._rawNGFA || []).forEach(function(r) {
+    if (CK && CK.indexOf('ngfa') === -1) return; // 매체 필터
     var rawDate = r['일별']||'';
     var d = rawDate.replace(/\./g,'-').replace(/-$/,'').slice(0,10);
     if (!d || d.length < 10 || d < dateFrom || d > dateTo) return;
