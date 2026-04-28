@@ -257,6 +257,11 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
   <button class="sub-tab" data-sub="anova" onclick="setSub(this,'hyper')">아노바</button>
 </div>
 
+<div class="filter-row" id="productFilterRow" style="display:none">
+  <span class="filter-label">제품</span>
+  <div class="tab-group" id="productTabs"></div>
+</div>
+
 <div class="filter-row">
   <span class="filter-label">매체</span>
   <div class="tab-group" id="chTabs">
@@ -843,7 +848,10 @@ function renderWithData() {
       campaignCache = {};
       res();
     });
-  }).then(function() { render(); });
+  }).then(function() {
+    render();
+    renderBudgetSection();
+  });
 }
 
 // 하이퍼 네이버SA: 브랜드 컬럼 + 캠페인유형으로 분리
@@ -1012,6 +1020,56 @@ function aggregateByBrandProduct(dateFrom, dateTo) {
 var productExpandedBrands = {kitchenaid: true, ecovacs: true, anova: true};
 var productPrevMode = false;
 var productSelectedCols = ['cost','revenue','roas','conversions','cpa','cvr','clicks','cpc','ctr','impressions','cpm'];
+
+// 제품 탭 동적 생성
+function buildProductTabs() {
+  if (!sheetsCache.hyper) return;
+  var raw = sheetsCache.hyper;
+  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
+  var prods = {};
+
+  (raw._rawNSA || []).forEach(function(r) {
+    var brKey = BRAND_MAP[(r['브랜드']||'').trim()];
+    if (!brKey || (BRAND_FILTER && brKey !== BRAND_FILTER)) return;
+    var p = (r['제품']||'').trim();
+    if (p) prods[p] = true;
+  });
+  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  (raw._rawNGFA || []).forEach(function(r) {
+    var p = (r['제품']||'').trim();
+    if (!p) return;
+    if (BRAND_FILTER) {
+      var camp = (r['캠페인명']||'').toLowerCase();
+      if (!BRAND_KEYWORDS.some(function(bk){ return bk.key === BRAND_FILTER && camp.indexOf(bk.keyword) !== -1; })) return;
+    }
+    prods[p] = true;
+  });
+
+  var prodList = Object.keys(prods).sort();
+  var row  = document.getElementById('productFilterRow');
+  var tabs = document.getElementById('productTabs');
+  if (!row || !tabs) return;
+
+  var html = '<button class="tab' + (S.prod === 'all' ? ' active' : '') + '" data-prod="all" onclick="setProd(this)">전체</button>';
+  prodList.forEach(function(p) {
+    html += '<button class="tab' + (S.prod === p ? ' active' : '') + '" data-prod="' + p + '" onclick="setProd(this)">' + p + '</button>';
+  });
+  tabs.innerHTML = html;
+  row.style.display = prodList.length > 0 ? 'flex' : 'none';
+}
+
+function setProd(btn) {
+  var tabs = document.querySelectorAll('#productTabs .tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  S.prod = btn.getAttribute('data-prod');
+  var dateFrom = document.getElementById('dateFrom').value;
+  var dateTo   = document.getElementById('dateTo').value;
+  rebuildRAW(dateFrom, dateTo);
+  campaignCache = {};
+  render();
+}
 
 function toggleProductBrand(brKey) {
   productExpandedBrands[brKey] = !productExpandedBrands[brKey];
@@ -1212,6 +1270,45 @@ function renderProductTable() {
       });
     }
   });
+
+  // 전체 합계 행
+  var grandTotal = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+  var grandPrev  = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+  BRAND_ORDER.forEach(function(brKey) {
+    if (!byBrand[brKey]) return;
+    var t = byBrand[brKey]._total;
+    grandTotal.cost        += t.cost        || 0;
+    grandTotal.revenue     += t.revenue     || 0;
+    grandTotal.clicks      += t.clicks      || 0;
+    grandTotal.impressions += t.impressions || 0;
+    grandTotal.conversions += t.conversions || 0;
+    if (prevData && prevData[brKey]) {
+      var pt = prevData[brKey]._total;
+      grandPrev.cost        += pt.cost        || 0;
+      grandPrev.revenue     += pt.revenue     || 0;
+      grandPrev.clicks      += pt.clicks      || 0;
+      grandPrev.impressions += pt.impressions || 0;
+      grandPrev.conversions += pt.conversions || 0;
+    }
+  });
+  var gtd = calcExtended(grandTotal);
+  var gpd = calcExtended(grandPrev);
+
+  html += '<tr style="border-top:2px solid var(--border2);background:var(--bg3)">';
+  html += '<td style="padding:11px 14px;font-weight:700;font-size:13px;font-family:\'Noto Sans KR\',sans-serif;position:sticky;left:0;background:var(--bg3)">전체 합계</td>';
+  activeCols.forEach(function(col) {
+    html += '<td style="padding:11px 14px;text-align:right;font-weight:700">' + fmt(gtd[col.key]||0, col.type) + '</td>';
+  });
+  html += '</tr>';
+
+  if (productPrevMode) {
+    html += '<tr style="background:rgba(59,125,246,0.07);border-bottom:1px solid var(--border)">';
+    html += '<td style="padding:3px 14px 6px 28px;font-size:10px;color:#3b7de9;font-weight:500;position:sticky;left:0;background:rgba(59,125,246,0.07)">↳ 이전 동기간</td>';
+    activeCols.forEach(function(col) {
+      html += '<td style="padding:3px 14px 6px;text-align:right;font-size:11px;color:#374151">' + fmt(gpd[col.key]||0, col.type) + changeArrow(gtd[col.key], gpd[col.key], col.type) + '</td>';
+    });
+    html += '</tr>';
+  }
 
   document.getElementById('productTbody').innerHTML = html;
 }
@@ -2748,6 +2845,7 @@ function render() {
   renderKPIs(cm, pm);
   buildMetricSelector();
   renderChart(cm, ck);
+  buildProductTabs();
   renderProductTable();
   renderTable(cm, ck);
   renderCampaignTable();
