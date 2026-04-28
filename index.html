@@ -86,20 +86,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 /* Breakdown */
 .breakdown-grid { display: grid; gap: 10px; margin-bottom: 20px; }
-.ch-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; position: relative; overflow: hidden; }
-.ch-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-.ch-card[data-ch="meta"]::before { background: var(--meta); }
-.ch-card[data-ch="google"]::before { background: var(--google); }
-.ch-card[data-ch="ngfa"]::before { background: var(--ngfa); }
-.ch-card[data-ch="nsa"]::before { background: var(--nsa); }
-.ch-card[data-ch="nbsa"]::before { background: var(--nbsa); }
-.ch-card[data-ch="kakao"]::before { background: var(--kakao); }
-.ch-card[data-ch="google_app"]::before { background: var(--google_app); }
 .ch-name { font-size: 12px; font-weight: 500; margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
 .ch-name .dot { width: 6px; height: 6px; border-radius: 50%; }
-.ch-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.ch-metric-label { font-family: 'Inter', sans-serif; font-size: 9px; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; margin-bottom: 3px; }
-.ch-metric-value { font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500; }
 
 /* Chart section */
 .chart-section { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 20px; position: relative; }
@@ -185,15 +173,6 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
 .budget-period-selector { display:flex; align-items:center; gap:6px; }
 .budget-select { font-family:'DM Mono',monospace; font-size:11px; padding:5px 10px; border-radius:6px; border:1px solid var(--border2); background:var(--bg3); color:var(--text); cursor:pointer; outline:none; }
 .budget-title { font-size:14px; font-weight:500; color:var(--text); }
-.budget-edit-btn { font-family:'DM Mono',monospace; font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border2); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
-.budget-edit-btn:hover { color:var(--text); border-color:var(--text); }
-.budget-save-btn { font-family:'DM Mono',monospace; font-size:11px; padding:5px 14px; border-radius:6px; border:none; background:var(--text); color:var(--bg); cursor:pointer; margin-top:10px; }
-.budget-save-btn:hover { opacity:.8; }
-.budget-input-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:4px; }
-.budget-input-item { display:flex; flex-direction:column; gap:4px; }
-.budget-input-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:.5px; }
-.budget-input-field { font-family:'DM Mono',monospace; font-size:12px; padding:6px 10px; border-radius:6px; border:1px solid var(--border2); background:var(--bg3); color:var(--text); width:140px; outline:none; }
-.budget-input-field:focus { border-color:var(--text); }
 .budget-bars { margin-top:4px; }
 .budget-row { display:flex; align-items:center; gap:12px; }
 .budget-row-label { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); width:80px; flex-shrink:0; }
@@ -439,76 +418,9 @@ function addToHierarchy(hier, camp, group, creative, dateStr, dateFrom, dateTo, 
 }
 
 // NSA 계층 집계
-function aggregateNSAHierarchy(rows, dateFrom, dateTo) {
-  var nsa = {}, nbsa = {};
-  for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    var dateStr = (r['일자'] || '').slice(0, 10);
-    if (!dateStr) continue;
-    var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
-    var target = isBSA ? nbsa : nsa;
-    addToHierarchy(target, r['캠페인명']||'(미분류)', r['광고그룹명']||'', null, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0,
-      Number(r['장바구니 전환수'])||0, Number(r['장바구니 매출액'])||0);
-  }
-  return {nsa: nsa, nbsa: nbsa};
-}
-
 // 공통 계층 집계 (Meta, Google)
-function aggregateGenericHierarchy(rows, dateFrom, dateTo, creativeCol) {
-  var out = {};
-  for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    var dateStr = (r['일자'] || '').slice(0, 10);
-    if (!dateStr) continue;
-    var creative = creativeCol ? (r[creativeCol] || '') : null;
-    addToHierarchy(out, r['캠페인명']||'(미분류)', r['광고그룹명']||'', creative, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0);
-  }
-  return out;
-}
-
 // 스케쳐스 Google 전용: 총구매수/총매출액, 앱 캠페인은 앱설치수
-function aggregateSkechersGoogleHierarchy(rows, dateFrom, dateTo, isApp) {
-  var out = {};
-  for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    var type = r['캠페인유형'] || '';
-    if (isApp  && type !== '앱') continue;
-    if (!isApp && type === '앱') continue;
-    var dateStr = (r['일자'] || '').slice(0, 10);
-    if (!dateStr) continue;
-    var installs = isApp ? ((Number(r['앱설치(Android)'])||0) + (Number(r['앱설치(iOS)'])||0)) : 0;
-    var conv    = isApp ? installs : (Number(r['총 구매수'])||0);
-    var rev     = Number(r['총 매출액'])||0;
-    addToHierarchy(out, r['캠페인명']||'(미분류)', r['광고그룹명']||'', null, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, conv, rev, 0, 0, installs);
-  }
-  return out;
-}
-
 // GFA 계층 집계
-function aggregateGFAHierarchy(rows, dateFrom, dateTo) {
-  var minoxell = {}, oliveyoung = {};
-  for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    var rawDate = r['일별'] || '';
-    var dateStr = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
-    if (!dateStr || dateStr.length < 10) continue;
-    var isOlive = (r['광고그룹명'] || '').indexOf('올리브영') !== -1;
-    var target = isOlive ? oliveyoung : minoxell;
-    addToHierarchy(target, r['캠페인명']||'(미분류)', r['광고그룹명']||'', r['광고소재']||'', dateStr, dateFrom, dateTo,
-      Number((r['총비용(vat+)']||'').replace(/,/g,''))||0,
-      Number((r['노출수']||'').replace(/,/g,''))||0,
-      Number((r['클릭수']||'').replace(/,/g,''))||0,
-      Number((r['구매완료 전환수']||'').replace(/,/g,''))||0,
-      Number((r['구매완료 매출액']||'').replace(/,/g,''))||0,
-      Number((r['장바구니 전환수']||'').replace(/,/g,''))||0,
-      Number((r['장바구니 매출액']||'').replace(/,/g,''))||0);
-  }
-  return {minoxell: minoxell, oliveyoung: oliveyoung};
-}
-
 // 하이퍼 NSA 계층
 function aggregateHyperNSAHierarchy(rows, dateFrom, dateTo) {
   var out = {};
@@ -578,60 +490,8 @@ function getCampaignHierarchy(brKey, chKey, dateFrom, dateTo) {
 }
 
 // 네이버SA → 캠페인별 {nsa:{campName:data}, nbsa:{campName:data}}
-function aggregateNSACampaign(rows, dateFrom, dateTo) {
-  var nsa = {}, nbsa = {};
-  for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    var dateStr = (r['일자'] || '').slice(0, 10);
-    if (!dateStr) continue;
-    var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
-    var target = isBSA ? nbsa : nsa;
-    var camp = r['캠페인명'] || '(미분류)';
-    addToCampaign(target, camp, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat+)'])||0, Number(r['노출수']) || 0,
-      Number(r['클릭수']) || 0, Number(r['구매완료 전환수']) || 0,
-      Number(r['구매완료 매출액']) || 0);
-  }
-  return {nsa: nsa, nbsa: nbsa};
-}
-
 // 공통 CSV → 캠페인별
-function aggregateGenericCampaign(rows, dateFrom, dateTo) {
-  var out = {};
-  for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    var dateStr = (r['일자'] || '').slice(0, 10);
-    if (!dateStr) continue;
-    var camp = r['캠페인명'] || '(미분류)';
-    addToCampaign(out, camp, dateStr, dateFrom, dateTo,
-      Number(r['총비용(vat+)'])||0, Number(r['노출수']) || 0,
-      Number(r['클릭수']) || 0, Number(r['구매완료 전환수']) || 0,
-      Number(r['구매완료 매출액']) || 0);
-  }
-  return out;
-}
-
 // GFA → 캠페인별 {minoxell:{}, oliveyoung:{}}
-function aggregateGFACampaign(rows, dateFrom, dateTo) {
-  var minoxell = {}, oliveyoung = {};
-  for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    var rawDate = r['일별'] || '';
-    var dateStr = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
-    if (!dateStr || dateStr.length < 10) continue;
-    var isOlive = (r['광고그룹명'] || '').indexOf('올리브영') !== -1;
-    var target = isOlive ? oliveyoung : minoxell;
-    var camp = r['캠페인명'] || '(미분류)';
-    addToCampaign(target, camp, dateStr, dateFrom, dateTo,
-      Number((r['총비용(vat+)']||'').replace(/,/g,''))||0,
-      Number((r['노출수'] || '').replace(/,/g,'')) || 0,
-      Number((r['클릭수'] || '').replace(/,/g,'')) || 0,
-      Number((r['구매완료 전환수'] || '').replace(/,/g,'')) || 0,
-      Number((r['구매완료 매출액'] || '').replace(/,/g,'')) || 0);
-  }
-  return {minoxell: minoxell, oliveyoung: oliveyoung};
-}
-
 // 하이퍼 NSA → 캠페인별
 function aggregateHyperNSACampaign(rows, dateFrom, dateTo) {
   var out = {};
@@ -749,11 +609,6 @@ function sumByDateRange(byDate, dateFrom, dateTo) {
     out.app_installs  += byDate[d].app_installs || 0;
   }
   return out;
-}
-
-function applyHyper(apiData, dateFrom, dateTo) {
-  if (!apiData) return;
-  rebuildRAW(dateFrom, dateTo);
 }
 
 // RAW/PREV를 현재 S.prod 필터에 맞게 재계산
@@ -946,72 +801,6 @@ function loadHyper(callback) {
 // ── 코멘트 기능 ────────────────────────────────────────────────────────────────
 
 // 브랜드 × 제품 × 채널 집계
-function aggregateByBrandProduct(dateFrom, dateTo) {
-  if (!sheetsCache.hyper) return {};
-  var raw = sheetsCache.hyper;
-  // out = { brandKey: { _total: {ch:{}}, prodName: {ch:{}} } }
-  var out = {};
-
-  var BRAND_MAP     = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
-  var BRAND_LABEL   = {'kitchenaid':'키친에이드','ecovacs':'에코백스','anova':'아노바'};
-  var BRAND_FILTER  = S.sub === 'all' ? null : S.sub;
-  var PROD_FILTER   = S.prod === 'all' ? null : S.prod;
-
-  function ensure(brKey, prod, ch) {
-    if (!out[brKey]) out[brKey] = {_label: BRAND_LABEL[brKey] || brKey, _total: {}};
-    if (!out[brKey]._total[ch]) out[brKey]._total[ch] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0};
-    if (!out[brKey][prod]) out[brKey][prod] = {};
-    if (!out[brKey][prod][ch]) out[brKey][prod][ch] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0};
-  }
-  function add(obj, r_cost, r_imp, r_click, r_conv, r_rev) {
-    obj.cost        += r_cost;
-    obj.impressions += r_imp;
-    obj.clicks      += r_click;
-    obj.conversions += r_conv;
-    obj.revenue     += r_rev;
-  }
-
-  // NSA
-  (raw._rawNSA || []).forEach(function(r) {
-    var d = (r['일자'] || '').slice(0, 10);
-    if (!d || d < dateFrom || d > dateTo) return;
-    var brKey = BRAND_MAP[(r['브랜드'] || '').trim()];
-    if (!brKey) return;
-    if (BRAND_FILTER && brKey !== BRAND_FILTER) return;
-    var prod = (r['제품'] || '').trim() || '(미분류)';
-    if (PROD_FILTER && prod !== PROD_FILTER) return;
-    var ch = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1 ? 'nbsa' : 'nsa';
-    ensure(brKey, prod, ch);
-    var vals = [Number(r['총비용(vat+)'])||0, Number(r['노출수'])||0, Number(r['클릭수'])||0, Number(r['구매완료 전환수'])||0, Number(r['구매완료 매출액'])||0];
-    add.apply(null, [out[brKey][prod][ch]].concat(vals));
-    add.apply(null, [out[brKey]._total[ch]].concat(vals));
-  });
-
-  // NGFA
-  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
-  (raw._rawNGFA || []).forEach(function(r) {
-    var rawDate = r['일별'] || '';
-    var d = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
-    if (!d || d.length < 10 || d < dateFrom || d > dateTo) return;
-    var camp = (r['캠페인명'] || '').toLowerCase();
-    var brKey = null;
-    for (var k = 0; k < BRAND_KEYWORDS.length; k++) {
-      if (camp.indexOf(BRAND_KEYWORDS[k].keyword) !== -1) { brKey = BRAND_KEYWORDS[k].key; break; }
-    }
-    if (!brKey) return;
-    if (BRAND_FILTER && brKey !== BRAND_FILTER) return;
-    var prod = (r['제품'] || '').trim() || '(미분류)';
-    if (PROD_FILTER && prod !== PROD_FILTER) return;
-    ensure(brKey, prod, 'ngfa');
-    var n = function(v){ return Number((v||'').replace(/,/g,''))||0; };
-    var vals = [n(r['총비용(vat+)']), n(r['노출수']), n(r['클릭수']), n(r['구매완료 전환수']), n(r['구매완료 매출액'])];
-    add.apply(null, [out[brKey][prod]['ngfa']].concat(vals));
-    add.apply(null, [out[brKey]._total['ngfa']].concat(vals));
-  });
-
-  return out;
-}
-
 // 펼쳐진 브랜드 상태
 var productExpandedBrands = {kitchenaid: true, ecovacs: true, anova: true};
 var productPrevMode = false;
@@ -1542,32 +1331,6 @@ function renderKPIs(cm, pm) {
   document.getElementById('kpiGrid').innerHTML = html;
 }
 
-function renderBreakdown(cm) {
-  var ck = chKeys();
-  var bd = document.getElementById('breakdown');
-  if (ck.length === 1) bd.style.gridTemplateColumns = '1fr';
-  else if (ck.length === 2) bd.style.gridTemplateColumns = '1fr 1fr';
-  else if (ck.length === 3) bd.style.gridTemplateColumns = 'repeat(3,1fr)';
-  else bd.style.gridTemplateColumns = 'repeat(4,1fr)';
-
-  var html = '';
-  for (var i = 0; i < ck.length; i++) {
-    var c = ck[i];
-    var d = calc(cm[c]);
-    html += '<div class="ch-card" data-ch="' + c + '">';
-    html += '<div class="ch-name"><div class="dot" style="background:' + CH_COLOR[c] + '"></div>' + CH_NAME[c] + '</div>';
-    html += '<div class="ch-metrics">';
-    html += '<div class="ch-metric"><div class="ch-metric-label">비용</div><div class="ch-metric-value">' + fmt(d.cost, 'won') + '</div></div>';
-    html += '<div class="ch-metric"><div class="ch-metric-label">매출</div><div class="ch-metric-value">' + fmt(d.revenue, 'won') + '</div></div>';
-    html += '<div class="ch-metric"><div class="ch-metric-label">ROAS</div><div class="ch-metric-value">' + fmt(d.roas, 'x') + '</div></div>';
-    html += '<div class="ch-metric"><div class="ch-metric-label">CVR</div><div class="ch-metric-value">' + fmt(d.cvr, 'pct') + '</div></div>';
-    html += '<div class="ch-metric"><div class="ch-metric-label">CPC</div><div class="ch-metric-value">' + fmt(d.cpc, 'cpc') + '</div></div>';
-    html += '<div class="ch-metric"><div class="ch-metric-label">CTR</div><div class="ch-metric-value">' + fmt(d.ctr, 'pct') + '</div></div>';
-    html += '</div></div>';
-  }
-  bd.innerHTML = html;
-}
-
 function buildMetricSelector() {
   var brand = getActiveBrand();
   var override = brand ? BRAND_OVERRIDES[brand] : null;
@@ -1864,46 +1627,6 @@ function hideTip() {
   document.getElementById('tip').style.opacity = '0';
 }
 
-function renderRoasCvr(cm, ck) {
-  var brand = getActiveBrand();
-  var isCareer = brand === 'careerbud';
-  var roasSection = document.querySelector('.roas-section');
-  // ROAS 카드 숨김/표시
-  var roasCard = document.getElementById('roasCard');
-  if (roasCard) roasCard.style.display = isCareer ? 'none' : '';
-  // CVR 레이블
-  var cvrTitle = document.getElementById('cvrTitle');
-  if (cvrTitle) cvrTitle.textContent = isCareer ? '회원가입률 (CVR) 비교' : 'CVR 비교';
-
-  if (!isCareer) {
-    var rv = [];
-    for (var i = 0; i < ck.length; i++) rv.push({c: ck[i], v: calc(cm[ck[i]]).roas});
-    var rm = rv[0].v;
-    for (var i = 1; i < rv.length; i++) if (rv[i].v > rm) rm = rv[i].v;
-    var html = '';
-    for (var i = 0; i < rv.length; i++) {
-      var c = rv[i].c, v = rv[i].v;
-      html += '<div class="roas-row"><div class="roas-ch">' + CH_SHORT[c] + '</div>';
-      html += '<div class="roas-bar-wrap"><div class="roas-bar-fill" style="width:' + (v/rm*100) + '%;background:' + CH_COLOR[c] + '"></div></div>';
-      html += '<div class="roas-val">' + fmt(v, 'roas') + '</div></div>';
-    }
-    document.getElementById('roasRows').innerHTML = html;
-  }
-
-  var cv = [];
-  for (var i = 0; i < ck.length; i++) cv.push({c: ck[i], v: calc(cm[ck[i]]).cvr});
-  var cm2 = cv[0].v;
-  for (var i = 1; i < cv.length; i++) if (cv[i].v > cm2) cm2 = cv[i].v;
-  var html2 = '';
-  for (var i = 0; i < cv.length; i++) {
-    var c = cv[i].c, v = cv[i].v;
-    html2 += '<div class="roas-row"><div class="roas-ch">' + CH_SHORT[c] + '</div>';
-    html2 += '<div class="roas-bar-wrap"><div class="roas-bar-fill" style="width:' + (v/cm2*100) + '%;background:' + CH_COLOR[c] + '"></div></div>';
-    html2 += '<div class="roas-val">' + (v*100).toFixed(2) + '%</div></div>';
-  }
-  document.getElementById('cvrRows').innerHTML = html2;
-}
-
 var TABLE_COLS = [
   {key:'cost',        label:'비용',   type:'won'},
   {key:'revenue',     label:'매출',   type:'won'},
@@ -2184,25 +1907,6 @@ function renderTable(cm, ck) {
 }
 
 // 캠페인별 테이블 채널 셀렉터 업데이트
-function updateCampChSelect() {
-  var bk = brandKeys(), ck = chKeys();
-  var sel = document.getElementById('campChSelect');
-  if (!sel) return;
-  var options = '';
-  for (var ci = 0; ci < ck.length; ci++) {
-    var ch = ck[ci];
-    // 해당 브랜드+채널에 데이터가 있는지 확인
-    var hasData = false;
-    for (var bi = 0; bi < bk.length; bi++) {
-      if (RAW[bk[bi]] && RAW[bk[bi]][ch] && (RAW[bk[bi]][ch].impressions > 0 || RAW[bk[bi]][ch].conversions > 0)) {
-        hasData = true; break;
-      }
-    }
-    if (hasData) options += '<option value="' + ch + '">' + CH_NAME[ch] + '</option>';
-  }
-  sel.innerHTML = options;
-}
-
 function renderCampaignTable() {
   var ck = chKeys();
   var bk = brandKeys();
@@ -3133,20 +2837,11 @@ function setBudgetMonth(m) {
 }
 
 // 날짜 범위의 일수
-function rangeDays() {
-  var f = new Date(document.getElementById('dateFrom').value);
-  var t = new Date(document.getElementById('dateTo').value);
-  return Math.max(1, Math.round((t - f) / 86400000) + 1);
-}
 // 해당 월의 총 일수
 function monthDays(dateStr) {
   var d = new Date(dateStr);
   return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
 }
-function getYearMonth(dateStr) {
-  return dateStr ? dateStr.slice(0, 7) : '';
-}
-
 // CSV 한 줄 파싱
 function splitCSVLine(line) {
   var cols = [], cur = '', inQuote = false;
@@ -3504,8 +3199,6 @@ function toggleBudgetSection() {
 }
 
 // 예산 입력 버튼 숨기기 (Sheets에서 읽어오므로 불필요)
-function toggleBudgetEdit() {}
-function saveBudget() {}
 
 buildMetricSelector();
 buildColDropdown();
