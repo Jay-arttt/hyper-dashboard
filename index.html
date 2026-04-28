@@ -255,6 +255,13 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
   <button class="sub-tab" data-sub="anova" onclick="setSub(this,'hyper')">아노바</button>
 </div>
 
+<div class="filter-row" id="productFilterRow" style="display:none">
+  <span class="filter-label">제품</span>
+  <div class="tab-group" id="productTabs">
+    <button class="tab active" data-prod="all" onclick="setProd(this)">전체</button>
+  </div>
+</div>
+
 <div class="filter-row">
   <span class="filter-label">매체</span>
   <div class="tab-group" id="chTabs">
@@ -304,6 +311,18 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
   </div>
 </div>
 
+
+<div class="table-section" id="productTableSection" style="margin-bottom:16px">
+  <div class="table-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <span>제품별 데이터</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table id="productTable" style="width:100%;border-collapse:collapse">
+      <thead><tr id="productTableHead"></tr></thead>
+      <tbody id="productTbody"></tbody>
+    </table>
+  </div>
+</div>
 
 <div class="table-section">
   <div class="table-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -841,6 +860,208 @@ function loadHyper(callback) {
 
 
 // ── 코멘트 기능 ────────────────────────────────────────────────────────────────
+
+// 제품별 × 채널별 집계 (NSA _rawNSA + _rawNGFA 활용)
+function aggregateByProduct(dateFrom, dateTo) {
+  if (!sheetsCache.hyper) return {};
+  var raw = sheetsCache.hyper;
+  var out = {}; // { 제품명: { ch: {cost,revenue,clicks,impressions,conversions} } }
+
+  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
+
+  // NSA rows
+  var nsaRows = raw._rawNSA || [];
+  for (var i = 0; i < nsaRows.length; i++) {
+    var r = nsaRows[i];
+    var d = (r['일자'] || '').slice(0, 10);
+    if (!d || d < dateFrom || d > dateTo) continue;
+    var brKey = BRAND_MAP[(r['브랜드'] || '').trim()];
+    if (!brKey) continue;
+    if (BRAND_FILTER && brKey !== BRAND_FILTER) continue;
+    var prod = (r['제품'] || '').trim() || '(미분류)';
+    if (S.prod !== 'all' && prod !== S.prod) continue;
+    var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
+    var ch = isBSA ? 'nbsa' : 'nsa';
+    if (!out[prod]) out[prod] = {};
+    if (!out[prod][ch]) out[prod][ch] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0};
+    out[prod][ch].cost        += Number(r['총비용(vat+)']) || 0;
+    out[prod][ch].impressions += Number(r['노출수'])       || 0;
+    out[prod][ch].clicks      += Number(r['클릭수'])       || 0;
+    out[prod][ch].conversions += Number(r['구매완료 전환수']) || 0;
+    out[prod][ch].revenue     += Number(r['구매완료 매출액']) || 0;
+  }
+
+  // NGFA rows
+  var ngfaRows = raw._rawNGFA || [];
+  var BRAND_KEYWORDS = [
+    {keyword:'키친에이드', key:'kitchenaid'},
+    {keyword:'에코백스',   key:'ecovacs'},
+    {keyword:'아노바',     key:'anova'}
+  ];
+  for (var i = 0; i < ngfaRows.length; i++) {
+    var r = ngfaRows[i];
+    var rawDate = r['일별'] || '';
+    var d = rawDate.replace(/\./g, '-').replace(/-$/, '').slice(0, 10);
+    if (!d || d.length < 10 || d < dateFrom || d > dateTo) continue;
+    if (BRAND_FILTER) {
+      var camp = (r['캠페인명'] || '').toLowerCase();
+      var matched = false;
+      for (var k = 0; k < BRAND_KEYWORDS.length; k++) {
+        if (BRAND_KEYWORDS[k].key === BRAND_FILTER && camp.indexOf(BRAND_KEYWORDS[k].keyword) !== -1) { matched = true; break; }
+      }
+      if (!matched) continue;
+    }
+    var prod = (r['제품'] || '').trim() || '(미분류)';
+    if (S.prod !== 'all' && prod !== S.prod) continue;
+    if (!out[prod]) out[prod] = {};
+    if (!out[prod]['ngfa']) out[prod]['ngfa'] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0};
+    out[prod]['ngfa'].cost        += Number((r['총비용(vat+)']||'').replace(/,/g,'')) || 0;
+    out[prod]['ngfa'].impressions += Number((r['노출수']||'').replace(/,/g,''))        || 0;
+    out[prod]['ngfa'].clicks      += Number((r['클릭수']||'').replace(/,/g,''))        || 0;
+    out[prod]['ngfa'].conversions += Number((r['구매완료 전환수']||'').replace(/,/g,'')) || 0;
+    out[prod]['ngfa'].revenue     += Number((r['구매완료 매출액']||'').replace(/,/g,'')) || 0;
+  }
+
+  return out;
+}
+
+// 제품 탭 동적 생성
+function buildProductTabs() {
+  if (!sheetsCache.hyper) return;
+  var raw = sheetsCache.hyper;
+  var prods = {};
+  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
+
+  (raw._rawNSA || []).forEach(function(r) {
+    var brKey = BRAND_MAP[(r['브랜드']||'').trim()];
+    if (!brKey) return;
+    if (BRAND_FILTER && brKey !== BRAND_FILTER) return;
+    var p = (r['제품']||'').trim();
+    if (p) prods[p] = true;
+  });
+  (raw._rawNGFA || []).forEach(function(r) {
+    var p = (r['제품']||'').trim();
+    if (!p) return;
+    if (BRAND_FILTER) {
+      var camp = (r['캠페인명']||'').toLowerCase();
+      var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+      var matched = BRAND_KEYWORDS.some(function(bk){ return bk.key === BRAND_FILTER && camp.indexOf(bk.keyword) !== -1; });
+      if (!matched) return;
+    }
+    prods[p] = true;
+  });
+
+  var prodList = Object.keys(prods).sort();
+  var row = document.getElementById('productFilterRow');
+  var tabs = document.getElementById('productTabs');
+  if (!tabs) return;
+
+  var html = '<button class="tab' + (S.prod === 'all' ? ' active' : '') + '" data-prod="all" onclick="setProd(this)">전체</button>';
+  prodList.forEach(function(p) {
+    html += '<button class="tab' + (S.prod === p ? ' active' : '') + '" data-prod="' + p + '" onclick="setProd(this)">' + p + '</button>';
+  });
+  tabs.innerHTML = html;
+  row.style.display = prodList.length > 0 ? 'flex' : 'none';
+}
+
+function setProd(btn) {
+  var tabs = document.querySelectorAll('#productTabs .tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  S.prod = btn.getAttribute('data-prod');
+  renderProductTable();
+}
+
+function renderProductTable() {
+  var dateFrom = document.getElementById('dateFrom').value;
+  var dateTo   = document.getElementById('dateTo').value;
+  var byProd = aggregateByProduct(dateFrom, dateTo);
+  var prods = Object.keys(byProd).sort();
+
+  var ck = chKeys();
+  // 실제 데이터 있는 채널만
+  var activeChs = [];
+  var CHS_ORDER = ['nsa','nbsa','ngfa','meta','google','google_app','kakao'];
+  CHS_ORDER.forEach(function(ch) {
+    if (ck.indexOf('all') !== -1 || ck.indexOf(ch) !== -1) {
+      var hasData = prods.some(function(p){ return byProd[p][ch] && byProd[p][ch].impressions > 0; });
+      if (hasData) activeChs.push(ch);
+    }
+  });
+
+  var section = document.getElementById('productTableSection');
+  if (prods.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  // thead
+  var headHtml = '<th style="cursor:default;text-align:left">제품</th>';
+  activeChs.forEach(function(ch) {
+    headHtml += '<th colspan="3" style="text-align:center;border-left:1px solid var(--border2)">' +
+      '<span class="ch-pill ' + ch + '">' + (CH_NAME[ch] || ch) + '</span></th>';
+  });
+  headHtml += '<th colspan="3" style="text-align:center;border-left:2px solid var(--border2)">합계</th>';
+
+  var subHead = '<th></th>';
+  activeChs.forEach(function() {
+    subHead += '<th style="font-size:10px;color:var(--muted);font-weight:500;border-left:1px solid var(--border2)">비용</th>' +
+               '<th style="font-size:10px;color:var(--muted);font-weight:500">전환수</th>' +
+               '<th style="font-size:10px;color:var(--muted);font-weight:500">ROAS</th>';
+  });
+  subHead += '<th style="font-size:10px;color:var(--muted);font-weight:500;border-left:2px solid var(--border2)">비용</th>' +
+             '<th style="font-size:10px;color:var(--muted);font-weight:500">전환수</th>' +
+             '<th style="font-size:10px;color:var(--muted);font-weight:500">ROAS</th>';
+
+  document.getElementById('productTableHead').innerHTML = '<tr>' + headHtml + '</tr><tr>' + subHead + '</tr>';
+
+  // tbody
+  var html = '';
+  var totCost = 0, totConv = 0, totRev = 0;
+
+  prods.forEach(function(p) {
+    var pData = byProd[p];
+    var pCost = 0, pConv = 0, pRev = 0;
+    html += '<tr style="border-bottom:1px solid var(--border)">';
+    html += '<td style="font-weight:500;font-family:\'Noto Sans KR\',sans-serif">' + p + '</td>';
+    activeChs.forEach(function(ch, ci) {
+      var c = pData[ch] || {cost:0,conversions:0,revenue:0};
+      var roas = c.cost > 0 ? (c.revenue / c.cost * 100).toFixed(0) + '%' : '-';
+      var borderStyle = ci === 0 ? 'border-left:1px solid var(--border2)' : 'border-left:1px solid var(--border2)';
+      html += '<td style="' + borderStyle + '">' + fmt(c.cost,'won') + '</td>';
+      html += '<td>' + fmt(c.conversions,'num') + '</td>';
+      html += '<td>' + roas + '</td>';
+      pCost += c.cost; pConv += c.conversions; pRev += c.revenue;
+    });
+    var pRoas = pCost > 0 ? (pRev / pCost * 100).toFixed(0) + '%' : '-';
+    html += '<td style="font-weight:600;border-left:2px solid var(--border2)">' + fmt(pCost,'won') + '</td>';
+    html += '<td style="font-weight:600">' + fmt(pConv,'num') + '</td>';
+    html += '<td style="font-weight:600">' + pRoas + '</td>';
+    html += '</tr>';
+    totCost += pCost; totConv += pConv; totRev += pRev;
+  });
+
+  // 합계 행
+  if (prods.length > 1) {
+    var totRoas = totCost > 0 ? (totRev / totCost * 100).toFixed(0) + '%' : '-';
+    html += '<tr style="border-top:2px solid var(--border2);background:var(--bg3)">';
+    html += '<td style="font-weight:600;font-family:\'Noto Sans KR\',sans-serif;font-size:12px">합계</td>';
+    activeChs.forEach(function(ch, ci) {
+      var chCost = 0, chConv = 0, chRev = 0;
+      prods.forEach(function(p){ var c = byProd[p][ch]||{}; chCost+=c.cost||0; chConv+=c.conversions||0; chRev+=c.revenue||0; });
+      var chRoas = chCost > 0 ? (chRev/chCost*100).toFixed(0)+'%' : '-';
+      html += '<td style="font-weight:600;border-left:1px solid var(--border2)">' + fmt(chCost,'won') + '</td>';
+      html += '<td style="font-weight:600">' + fmt(chConv,'num') + '</td>';
+      html += '<td style="font-weight:600">' + chRoas + '</td>';
+    });
+    html += '<td style="font-weight:700;border-left:2px solid var(--border2)">' + fmt(totCost,'won') + '</td>';
+    html += '<td style="font-weight:700">' + fmt(totConv,'num') + '</td>';
+    html += '<td style="font-weight:700">' + totRoas + '</td>';
+    html += '</tr>';
+  }
+
+  document.getElementById('productTbody').innerHTML = html;
+}
 function getPrevRange(dateFrom, dateTo) {
   var f = new Date(dateFrom), t = new Date(dateTo);
   var diff = t - f;
@@ -907,7 +1128,7 @@ function togglePrevWeek() {
   var cm = sumData(bk, ck, RAW);
   renderChart(cm, ck);
 }
-var S = {brand: 'hyper', sub: 'all', ch: ['all']};
+var S = {brand: 'hyper', sub: 'all', ch: ['all'], prod: 'all'};
 
 var DAYS = []; // 차트용 날짜 배열 (renderChart에서 동적 생성)
 var MULTS = {}; // 더 이상 사용하지 않음
@@ -2384,6 +2605,8 @@ function render() {
   renderKPIs(cm, pm);
   buildMetricSelector();
   renderChart(cm, ck);
+  buildProductTabs();
+  renderProductTable();
   renderTable(cm, ck);
   renderCampaignTable();
   renderMetaCreatives();
@@ -2408,6 +2631,7 @@ function setSub(btn, brand) {
   for (var i = 0; i < stabs.length; i++) stabs[i].classList.remove('active');
   btn.classList.add('active');
   S.sub = btn.getAttribute('data-sub');
+  S.prod = 'all';
   renderWithData();
 }
 
