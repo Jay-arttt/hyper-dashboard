@@ -245,16 +245,11 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
 <div class="filter-row">
   <span class="filter-label">브랜드</span>
   <div class="tab-group" id="brandTabs">
-    <button class="tab active" data-brand="hyper" onclick="setBrand(this)"><span class="dot" style="background:var(--hyper)"></span>하이퍼</button>
+    <button class="tab active" data-sub="all" onclick="setSub(this,'hyper')">전체</button>
+    <button class="tab" data-sub="kitchenaid" onclick="setSub(this,'hyper')">키친에이드</button>
+    <button class="tab" data-sub="ecovacs" onclick="setSub(this,'hyper')">에코백스</button>
+    <button class="tab" data-sub="anova" onclick="setSub(this,'hyper')">아노바</button>
   </div>
-</div>
-
-<div class="subbrand-row" id="subRowHyper" style="display:flex">
-  <span class="subbrand-label">하이퍼 하위</span>
-  <button class="sub-tab active" data-sub="all" onclick="setSub(this,'hyper')">전체</button>
-  <button class="sub-tab" data-sub="kitchenaid" onclick="setSub(this,'hyper')">키친에이드</button>
-  <button class="sub-tab" data-sub="ecovacs" onclick="setSub(this,'hyper')">에코백스</button>
-  <button class="sub-tab" data-sub="anova" onclick="setSub(this,'hyper')">아노바</button>
 </div>
 
 <div class="filter-row" id="productFilterRow" style="display:none">
@@ -1194,7 +1189,7 @@ function renderProductTable() {
   var byBrand = aggregateByBrandProductRange(dateFrom, dateTo);
   var prevData = productPrevMode ? aggregateByBrandProductPrev(dateFrom, dateTo) : null;
 
-  var BRAND_ORDER = ['kitchenaid','ecovacs','anova'];
+  var BRAND_ORDER = S.sub === 'all' ? ['kitchenaid','ecovacs','anova'] : [S.sub];
   var hasAny = BRAND_ORDER.some(function(br){ return !!byBrand[br]; });
   var section = document.getElementById('productTableSection');
   if (!hasAny) { section.style.display = 'none'; return; }
@@ -1271,48 +1266,49 @@ function renderProductTable() {
     }
   });
 
-  // 전체 합계 행
-  var grandTotal = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
-  var grandPrev  = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
-  BRAND_ORDER.forEach(function(brKey) {
-    if (!byBrand[brKey]) return;
-    var t = byBrand[brKey]._total;
-    grandTotal.cost        += t.cost        || 0;
-    grandTotal.revenue     += t.revenue     || 0;
-    grandTotal.clicks      += t.clicks      || 0;
-    grandTotal.impressions += t.impressions || 0;
-    grandTotal.conversions += t.conversions || 0;
-    if (prevData && prevData[brKey]) {
-      var pt = prevData[brKey]._total;
-      grandPrev.cost        += pt.cost        || 0;
-      grandPrev.revenue     += pt.revenue     || 0;
-      grandPrev.clicks      += pt.clicks      || 0;
-      grandPrev.impressions += pt.impressions || 0;
-      grandPrev.conversions += pt.conversions || 0;
-    }
-  });
-  var gtd = calcExtended(grandTotal);
-  var gpd = calcExtended(grandPrev);
+  // 전체 합계 행 (브랜드 2개 이상일 때만)
+  if (BRAND_ORDER.filter(function(br){ return !!byBrand[br]; }).length > 1) {
+    var grandTotal = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+    var grandPrev  = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+    BRAND_ORDER.forEach(function(brKey) {
+      if (!byBrand[brKey]) return;
+      var t = byBrand[brKey]._total;
+      grandTotal.cost        += t.cost        || 0;
+      grandTotal.revenue     += t.revenue     || 0;
+      grandTotal.clicks      += t.clicks      || 0;
+      grandTotal.impressions += t.impressions || 0;
+      grandTotal.conversions += t.conversions || 0;
+      if (prevData && prevData[brKey]) {
+        var pt = prevData[brKey]._total;
+        grandPrev.cost        += pt.cost        || 0;
+        grandPrev.revenue     += pt.revenue     || 0;
+        grandPrev.clicks      += pt.clicks      || 0;
+        grandPrev.impressions += pt.impressions || 0;
+        grandPrev.conversions += pt.conversions || 0;
+      }
+    });
+    var gtd = calcExtended(grandTotal);
+    var gpd = calcExtended(grandPrev);
 
-  html += '<tr style="border-top:2px solid var(--border2);background:var(--bg3)">';
-  html += '<td style="padding:11px 14px;font-weight:700;font-size:13px;font-family:\'Noto Sans KR\',sans-serif;position:sticky;left:0;background:var(--bg3)">전체 합계</td>';
-  activeCols.forEach(function(col) {
-    html += '<td style="padding:11px 14px;text-align:right;font-weight:700">' + fmt(gtd[col.key]||0, col.type) + '</td>';
-  });
-  html += '</tr>';
-
-  if (productPrevMode) {
-    html += '<tr style="background:rgba(59,125,246,0.07);border-bottom:1px solid var(--border)">';
-    html += '<td style="padding:3px 14px 6px 28px;font-size:10px;color:#3b7de9;font-weight:500;position:sticky;left:0;background:rgba(59,125,246,0.07)">↳ 이전 동기간</td>';
+    html += '<tr style="border-top:2px solid var(--border2);background:var(--bg3)">';
+    html += '<td style="padding:11px 14px;font-weight:700;font-size:13px;font-family:\'Noto Sans KR\',sans-serif;position:sticky;left:0;background:var(--bg3)">전체 합계</td>';
     activeCols.forEach(function(col) {
-      html += '<td style="padding:3px 14px 6px;text-align:right;font-size:11px;color:#374151">' + fmt(gpd[col.key]||0, col.type) + changeArrow(gtd[col.key], gpd[col.key], col.type) + '</td>';
+      html += '<td style="padding:11px 14px;text-align:right;font-weight:700">' + fmt(gtd[col.key]||0, col.type) + '</td>';
     });
     html += '</tr>';
+
+    if (productPrevMode) {
+      html += '<tr style="background:rgba(59,125,246,0.07);border-bottom:1px solid var(--border)">';
+      html += '<td style="padding:3px 14px 6px 28px;font-size:10px;color:#3b7de9;font-weight:500;position:sticky;left:0;background:rgba(59,125,246,0.07)">↳ 이전 동기간</td>';
+      activeCols.forEach(function(col) {
+        html += '<td style="padding:3px 14px 6px;text-align:right;font-size:11px;color:#374151">' + fmt(gpd[col.key]||0, col.type) + changeArrow(gtd[col.key], gpd[col.key], col.type) + '</td>';
+      });
+      html += '</tr>';
+    }
   }
 
   document.getElementById('productTbody').innerHTML = html;
 }
-function getPrevRange(dateFrom, dateTo) {
   var f = new Date(dateFrom), t = new Date(dateTo);
   var diff = t - f;
   var prevTo   = new Date(f - 1);
@@ -1466,6 +1462,7 @@ function aggCalc(map) {
 }
 
 function fmt(n, t) {
+  if (n === null || n === undefined || isNaN(n) || !isFinite(n)) return '-';
   if (t === 'won')  return '₩' + Math.round(n).toLocaleString('ko-KR');
   if (t === 'pct')  return (n * 100).toFixed(2) + '%';
   if (t === 'roas') return (n * 100).toFixed(0) + '%';
@@ -2858,16 +2855,13 @@ function setBrand(btn) {
   btn.classList.add('active');
   S.brand = btn.getAttribute('data-brand');
   S.sub = 'all';
-  document.getElementById('subRowHyper').style.display = 'flex';
-  var stabs = document.querySelectorAll('.sub-tab');
-  for (var i = 0; i < stabs.length; i++) stabs[i].classList.toggle('active', stabs[i].getAttribute('data-sub') === 'all');
   tableSort = {key: null, asc: true};
   buildColDropdown();
   renderWithData();
 }
 
 function setSub(btn, brand) {
-  var stabs = document.querySelectorAll('#subRowHyper .sub-tab');
+  var stabs = document.querySelectorAll('#brandTabs .tab');
   for (var i = 0; i < stabs.length; i++) stabs[i].classList.remove('active');
   btn.classList.add('active');
   S.sub = btn.getAttribute('data-sub');
