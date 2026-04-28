@@ -754,7 +754,6 @@ function rebuildRAW(dateFrom, dateTo) {
   var prevRange = getPrevRange(dateFrom, dateTo);
 
   var HYPER_BRANDS = ['kitchenaid', 'ecovacs', 'anova'];
-  var HYPER_CHS    = ['nsa', 'nbsa', 'ngfa'];
   for (var bi = 0; bi < HYPER_BRANDS.length; bi++) {
     RAW[HYPER_BRANDS[bi]]  = {};
     PREV[HYPER_BRANDS[bi]] = {};
@@ -763,6 +762,26 @@ function rebuildRAW(dateFrom, dateTo) {
   var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
   var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
   var PROD_FILTER  = S.prod === 'all' ? null : S.prod;
+
+  function addNSA(target, bk, chk, r) {
+    if (!target[bk]) target[bk] = {};
+    if (!target[bk][chk]) target[bk][chk] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+    target[bk][chk].cost        += Number(r['총비용(vat+)'])       || 0;
+    target[bk][chk].impressions += Number(r['노출수'])              || 0;
+    target[bk][chk].clicks      += Number(r['클릭수'])              || 0;
+    target[bk][chk].conversions += Number(r['구매완료 전환수'])      || 0;
+    target[bk][chk].revenue     += Number(r['구매완료 매출액'])      || 0;
+  }
+
+  function addNGFA(target, bk, r) {
+    if (!target[bk]) target[bk] = {};
+    if (!target[bk]['ngfa']) target[bk]['ngfa'] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
+    target[bk]['ngfa'].cost        += Number((r['총비용(vat+)']||'').replace(/,/g,''))       || 0;
+    target[bk]['ngfa'].impressions += Number((r['노출수']||'').replace(/,/g,''))              || 0;
+    target[bk]['ngfa'].clicks      += Number((r['클릭수']||'').replace(/,/g,''))              || 0;
+    target[bk]['ngfa'].conversions += Number((r['구매완료 전환수']||'').replace(/,/g,''))      || 0;
+    target[bk]['ngfa'].revenue     += Number((r['구매완료 매출액']||'').replace(/,/g,''))      || 0;
+  }
 
   // ── NSA rows ──
   var nsaRows = sheetsCache.hyper._rawNSA || [];
@@ -777,23 +796,8 @@ function rebuildRAW(dateFrom, dateTo) {
     var camp = (r['캠페인명'] || '');
     var bKey = (brKey === 'kitchenaid' && camp.indexOf('코드리스') !== -1) ? 'kitchenaid_codeless' : brKey;
     var ch = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1 ? 'nbsa' : 'nsa';
-    var key = bKey + '__' + ch;
-    if (!sheetsCache.hyper[key]) sheetsCache.hyper[key] = {};
-
-    // RAW (cur)
-    var inCur  = d >= dateFrom && d <= dateTo;
-    var inPrev = d >= prevRange.from && d <= prevRange.to;
-    function addTo(target, bk, chk) {
-      if (!target[bk]) target[bk] = {};
-      if (!target[bk][chk]) target[bk][chk] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
-      target[bk][chk].cost        += Number(r['총비용(vat+)'])       || 0;
-      target[bk][chk].impressions += Number(r['노출수'])              || 0;
-      target[bk][chk].clicks      += Number(r['클릭수'])              || 0;
-      target[bk][chk].conversions += Number(r['구매완료 전환수'])      || 0;
-      target[bk][chk].revenue     += Number(r['구매완료 매출액'])      || 0;
-    }
-    if (inCur)  addTo(RAW,  bKey, ch);
-    if (inPrev) addTo(PREV, bKey, ch);
+    if (d >= dateFrom && d <= dateTo)       addNSA(RAW,  bKey, ch, r);
+    if (d >= prevRange.from && d <= prevRange.to) addNSA(PREV, bKey, ch, r);
   }
 
   // ── NGFA rows ──
@@ -816,19 +820,8 @@ function rebuildRAW(dateFrom, dateTo) {
     if (!brKey) continue;
     if (BRAND_FILTER && brKey !== BRAND_FILTER) continue;
     if (PROD_FILTER  && (r['제품'] || '').trim() !== PROD_FILTER) continue;
-    var inCur  = d >= dateFrom && d <= dateTo;
-    var inPrev = d >= prevRange.from && d <= prevRange.to;
-    function addToNG(target, bk) {
-      if (!target[bk]) target[bk] = {};
-      if (!target[bk]['ngfa']) target[bk]['ngfa'] = {cost:0,revenue:0,clicks:0,impressions:0,conversions:0,app_installs:0};
-      target[bk]['ngfa'].cost        += Number((r['총비용(vat+)']||'').replace(/,/g,''))       || 0;
-      target[bk]['ngfa'].impressions += Number((r['노출수']||'').replace(/,/g,''))              || 0;
-      target[bk]['ngfa'].clicks      += Number((r['클릭수']||'').replace(/,/g,''))              || 0;
-      target[bk]['ngfa'].conversions += Number((r['구매완료 전환수']||'').replace(/,/g,''))      || 0;
-      target[bk]['ngfa'].revenue     += Number((r['구매완료 매출액']||'').replace(/,/g,''))      || 0;
-    }
-    if (inCur)  addToNG(RAW,  brKey);
-    if (inPrev) addToNG(PREV, brKey);
+    if (d >= dateFrom && d <= dateTo)            addNGFA(RAW,  brKey, r);
+    if (d >= prevRange.from && d <= prevRange.to) addNGFA(PREV, brKey, r);
   }
 }
 
@@ -1309,6 +1302,8 @@ function renderProductTable() {
 
   document.getElementById('productTbody').innerHTML = html;
 }
+
+function getPrevRange(dateFrom, dateTo) {
   var f = new Date(dateFrom), t = new Date(dateTo);
   var diff = t - f;
   var prevTo   = new Date(f - 1);
@@ -3286,6 +3281,8 @@ function _renderBudgetBars(ym, budgets) {
           var storageKey  = sub.key + '__' + chKey;
           var monthBudget = budgets[storageKey] || 0;
           if (!monthBudget) continue;
+          // 하이퍼는 예산에 VAT(×1.1) 적용
+          if (brandGroup.brand === '하이퍼') monthBudget = Math.round(monthBudget * 1.1);
 
           var spent = 0;
 
