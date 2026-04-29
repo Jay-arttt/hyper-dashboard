@@ -616,7 +616,7 @@ function rebuildRAW(dateFrom, dateTo) {
   if (!sheetsCache.hyper) return;
   var prevRange = getPrevRange(dateFrom, dateTo);
 
-  var HYPER_BRANDS = ['kitchenaid', 'ecovacs', 'anova'];
+  var HYPER_BRANDS = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova'];
   for (var bi = 0; bi < HYPER_BRANDS.length; bi++) {
     RAW[HYPER_BRANDS[bi]]  = {};
     PREV[HYPER_BRANDS[bi]] = {};
@@ -1134,8 +1134,8 @@ var PREV = {};
   }
 })();
 
-var HYPER_SUBS     = ['kitchenaid', 'ecovacs', 'anova'];
-var ALL_BRANDS = ['kitchenaid', 'ecovacs', 'anova'];
+var HYPER_SUBS     = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova'];
+var ALL_BRANDS = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova'];
 var CHS = ['meta', 'google', 'kakao', 'ngfa', 'nsa', 'nbsa'];
 var CH_NAME  = {meta: 'Meta', google: 'Google', kakao: 'Kakao', ngfa: '네이버 GFA', nsa: '네이버 SA', nbsa: '네이버 BSA'};
 var CH_COLOR = {meta: 'var(--meta)', google: 'var(--google)', kakao: 'var(--kakao)', ngfa: 'var(--ngfa)', nsa: 'var(--nsa)', nbsa: 'var(--nbsa)'};
@@ -1191,8 +1191,9 @@ function getDayData(brKey, chKey, dateStr) {
 }
 
 function brandKeys() {
-  if (S.brand === 'hyper') return S.sub === 'all' ? HYPER_SUBS : [S.sub];
-  return HYPER_SUBS;
+  if (S.sub === 'all') return ALL_BRANDS;
+  if (S.sub === 'kitchenaid') return ['kitchenaid', 'kitchenaid_codeless'];
+  return [S.sub];
 }
 
 function chKeys() {
