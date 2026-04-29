@@ -3013,8 +3013,7 @@ function _renderBudgetBars(ym, budgets) {
         for (var sk = 0; sk < sub.chs.length; sk++) {
           var chKey = sub.chs[sk];
           var storageKey  = sub.key + '__' + chKey;
-          var monthBudget = budgets[storageKey] !== undefined ? budgets[storageKey] : -1;
-          if (monthBudget < 0) continue; // 시트에 행 자체가 없으면 스킵
+          var monthBudget = budgets[storageKey] !== undefined ? budgets[storageKey] : 0;
           // 하이퍼는 예산에 VAT(×1.1) 적용
           if (brandGroup.brand === '하이퍼') monthBudget = Math.round(monthBudget * 1.1);
 
