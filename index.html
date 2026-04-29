@@ -2924,7 +2924,8 @@ function parseBudgetSheet(text, targetYm) {
     else if (rawBrand) lastSub = '';
 
     var budget = parseBudgetNum(cols[monthIdx] || '');
-    if (!budget || !lastBrand || !rawCh) continue;
+    var colEmpty = (cols[monthIdx] || '').trim() === '';
+    if (colEmpty || !lastBrand || !rawCh) continue;
 
     for (var m = 0; m < BUDGET_BRAND_MAP.length; m++) {
       var rule = BUDGET_BRAND_MAP[m];
@@ -3008,8 +3009,8 @@ function _renderBudgetBars(ym, budgets) {
         for (var sk = 0; sk < sub.chs.length; sk++) {
           var chKey = sub.chs[sk];
           var storageKey  = sub.key + '__' + chKey;
-          var monthBudget = budgets[storageKey] || 0;
-          if (!monthBudget) continue;
+          var monthBudget = budgets[storageKey] !== undefined ? budgets[storageKey] : -1;
+          if (monthBudget < 0) continue; // 시트에 행 자체가 없으면 스킵
           // 하이퍼는 예산에 VAT(×1.1) 적용
           if (brandGroup.brand === '하이퍼') monthBudget = Math.round(monthBudget * 1.1);
 
@@ -3020,6 +3021,9 @@ function _renderBudgetBars(ym, budgets) {
             var byDateH2 = sheetsCache.hyper[hyperKey] || {};
             spent = sumByDateRange(byDateH2, budgetDateFrom, budgetDateTo).cost || 0;
           }
+
+          // 예산도 0이고 소진도 0이면 표시하지 않음
+          if (monthBudget === 0 && spent === 0) continue;
 
           var feeRate = FEE_RATES[storageKey] || 0;
           if (feeRate > 0) spent = Math.round(spent * (1 + feeRate));
