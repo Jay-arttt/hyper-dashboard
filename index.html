@@ -434,7 +434,8 @@ function aggregateHyperNSAHierarchy(rows, dateFrom, dateTo) {
     if (!brKey) continue;
     if (PROD_FILTER && (r['제품']||'').trim() !== PROD_FILTER) continue;
     var campName = r['캠페인명'] || '';
-    if (brKey === 'kitchenaid' && campName.indexOf('코드리스') !== -1) brKey = 'kitchenaid_codeless';
+    var prod2 = (r['제품']||'').trim();
+    if (brKey === 'kitchenaid' && (prod2.indexOf('코드리스') !== -1 || campName.indexOf('코드리스') !== -1)) brKey = 'kitchenaid_codeless';
     var isBSA = (r['캠페인유형']||'').indexOf('브랜드검색') !== -1;
     var storageKey = brKey + '__' + (isBSA ? 'nbsa' : 'nsa');
     if (!out[storageKey]) out[storageKey] = {};
@@ -505,7 +506,8 @@ function aggregateHyperNSACampaign(rows, dateFrom, dateTo) {
     if (!brKey) continue;
     if (PROD_FILTER && (r['제품'] || '').trim() !== PROD_FILTER) continue;
     var campName = r['캠페인명'] || '';
-    if (brKey === 'kitchenaid' && campName.indexOf('코드리스') !== -1) brKey = 'kitchenaid_codeless';
+    var prod2 = (r['제품']||'').trim();
+    if (brKey === 'kitchenaid' && (prod2.indexOf('코드리스') !== -1 || campName.indexOf('코드리스') !== -1)) brKey = 'kitchenaid_codeless';
     var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
     var chKey = isBSA ? 'nbsa' : 'nsa';
     var storageKey = brKey + '__' + chKey;
@@ -657,7 +659,8 @@ function rebuildRAW(dateFrom, dateTo) {
     if (BRAND_FILTER && brKey !== BRAND_FILTER) continue;
     if (PROD_FILTER  && (r['제품'] || '').trim() !== PROD_FILTER) continue;
     var camp = (r['캠페인명'] || '');
-    var bKey = (brKey === 'kitchenaid' && camp.indexOf('코드리스') !== -1) ? 'kitchenaid_codeless' : brKey;
+    var prod3 = (r['제품'] || '').trim();
+    var bKey = (brKey === 'kitchenaid' && (prod3.indexOf('코드리스') !== -1 || camp.indexOf('코드리스') !== -1)) ? 'kitchenaid_codeless' : brKey;
     var ch = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1 ? 'nbsa' : 'nsa';
     if (d >= dateFrom && d <= dateTo)       addNSA(RAW,  bKey, ch, r);
     if (d >= prevRange.from && d <= prevRange.to) addNSA(PREV, bKey, ch, r);
@@ -716,8 +719,9 @@ function aggregateHyperNSA(rows) {
     var brandKr = (r['브랜드'] || '').trim();
     var brKey = BRAND_MAP[brandKr];
     if (!brKey) continue;
+    var prod = (r['제품'] || '').trim();
     var campName = (r['캠페인명'] || '');
-    if (brKey === 'kitchenaid' && campName.indexOf('코드리스') !== -1) brKey = 'kitchenaid_codeless';
+    if (brKey === 'kitchenaid' && (prod.indexOf('코드리스') !== -1 || campName.indexOf('코드리스') !== -1)) brKey = 'kitchenaid_codeless';
     var isBSA = (r['캠페인유형'] || '').indexOf('브랜드검색') !== -1;
     var chKey = isBSA ? 'nbsa' : 'nsa';
     var storageKey = brKey + '__' + chKey;
