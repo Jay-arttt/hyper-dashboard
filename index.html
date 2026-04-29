@@ -2811,7 +2811,7 @@ var budgetPeriod = {
 function buildBudgetPeriodSelector() {
   // 연도: 하드코딩 or 동적
   var curYear = new Date().getFullYear();
-  var years = [String(curYear - 1), String(curYear), String(curYear + 1)];
+  var years = [String(curYear), String(curYear + 1)];
   var monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
   var yearSel = document.getElementById('budgetYearSelect');
@@ -2862,8 +2862,11 @@ function parseBudgetNum(str) {
 }
 
 // 새 시트 파싱: 헤더에서 월 컬럼 인덱스 찾아서 { storageKey: 월예산 } 반환
-function parseBudgetSheet(text, targetMonth) {
-  // targetMonth: '03' 형태
+function parseBudgetSheet(text, targetYm) {
+  // targetYm: '2026-04' 형태
+  var targetYear  = targetYm.slice(0, 4);
+  var targetMonth = targetYm.slice(5, 7);
+
   var cleaned = '';
   var inQ = false;
   for (var ci = 0; ci < text.length; ci++) {
@@ -2877,22 +2880,40 @@ function parseBudgetSheet(text, targetMonth) {
   if (lines.length < 2) return {};
 
   var headers = splitCSVLine(lines[0]);
-  // 헤더: 브랜드,세부,매체,연간,12월,1월,2월,...
-  // 월 컬럼 찾기: "1월"~"12월"
+  // 연도 행이 있는지 확인 (2행이 연도인 경우)
+  var yearRow = null;
+  var dataStartLine = 1;
+  var secondRow = splitCSVLine(lines[1] || '');
+  var hasYearRow = secondRow.some(function(c){ return /^\d{4}$/.test(c.trim()); });
+  if (hasYearRow) {
+    yearRow = secondRow;
+    dataStartLine = 2;
+  }
+
   var monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   var targetLabel = monthNames[parseInt(targetMonth,10)-1];
 
-  // 헤더에 같은 월 이름이 여러 번 나올 수 있으므로 마지막 인덱스 사용 (현재 연도)
+  // 연도 행이 있으면 연도+월로 매칭, 없으면 기존처럼 마지막 월 컬럼
   var monthIdx = -1;
+  var lastYear = '';
   for (var h = 0; h < headers.length; h++) {
-    if (headers[h].trim() === targetLabel) monthIdx = h;
+    if (yearRow) {
+      var yr = (yearRow[h] || '').trim();
+      if (yr) lastYear = yr;
+      if (lastYear === targetYear && headers[h].trim() === targetLabel) {
+        monthIdx = h;
+        break;
+      }
+    } else {
+      if (headers[h].trim() === targetLabel) monthIdx = h;
+    }
   }
-  if (monthIdx < 0) { console.warn('월 컬럼 못 찾음:', targetLabel, headers); return {}; }
+  if (monthIdx < 0) { console.warn('월 컬럼 못 찾음:', targetYm, headers); return {}; }
 
   var out = {};
   var lastBrand = '', lastSub = '';
 
-  for (var i = 1; i < lines.length; i++) {
+  for (var i = dataStartLine; i < lines.length; i++) {
     var cols = splitCSVLine(lines[i]);
     var rawBrand = (cols[0] || '').trim();
     var rawSub   = (cols[1] || '').trim();
@@ -2900,12 +2921,11 @@ function parseBudgetSheet(text, targetMonth) {
 
     if (rawBrand) lastBrand = rawBrand;
     if (rawSub)   lastSub   = rawSub;
-    else if (rawBrand) lastSub = ''; // 브랜드 바뀌면 세부 초기화
+    else if (rawBrand) lastSub = '';
 
     var budget = parseBudgetNum(cols[monthIdx] || '');
     if (!budget || !lastBrand || !rawCh) continue;
 
-    // BUDGET_BRAND_MAP에서 매칭
     for (var m = 0; m < BUDGET_BRAND_MAP.length; m++) {
       var rule = BUDGET_BRAND_MAP[m];
       if (rule.brand === lastBrand && rule.sub === lastSub && rule.ch === rawCh) {
@@ -2920,7 +2940,7 @@ function parseBudgetSheet(text, targetMonth) {
 function loadBudgetForMonth(ym, callback) {
   // 전체 시트를 한 번만 로드하고 캐시
   if (budgetCache.raw) {
-    var parsed = parseBudgetSheet(budgetCache.raw, ym.slice(5,7));
+    var parsed = parseBudgetSheet(budgetCache.raw, ym);
     callback(parsed);
     return;
   }
@@ -2928,7 +2948,7 @@ function loadBudgetForMonth(ym, callback) {
     .then(function(r){ return r.text(); })
     .then(function(text){
       budgetCache.raw = text;
-      var parsed = parseBudgetSheet(text, ym.slice(5,7));
+      var parsed = parseBudgetSheet(text, ym);
       callback(parsed);
     })
     .catch(function(){ callback({}); });
