@@ -193,10 +193,21 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
 
 <div class="page-wrap">
 <div class="sticky-filters">
-<div class="header">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<div class="header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
   <div>
     <h1>하이퍼 광고 성과 대시보드</h1>
     <p id="rangeLabel">2026.02.22 — 2026.03.24</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button onclick="downloadExcel()" style="display:flex;align-items:center;gap:5px;background:none;border:1px solid var(--border2);border-radius:7px;padding:6px 13px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:500;transition:all .15s" onmouseover="this.style.borderColor='#16a34a';this.style.color='#16a34a'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+      엑셀
+    </button>
+    <button onclick="downloadPDF()" style="display:flex;align-items:center;gap:5px;background:none;border:1px solid var(--border2);border-radius:7px;padding:6px 13px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:500;transition:all .15s" onmouseover="this.style.borderColor='#dc2626';this.style.color='#dc2626'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      PDF
+    </button>
   </div>
   <div class="date-controls">
     <div class="preset-group">
@@ -351,6 +362,25 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
     </table>
   </div>
   <style>#campTableWrap::-webkit-scrollbar{display:none}</style>
+  <style>
+  @media print {
+    @page { size: A4 landscape; margin: 12mm; }
+    body { background: white !important; color: black !important; font-size: 11px; }
+    .header, .filter-row, .subbrand-row { display: block !important; }
+    .date-controls, #productFilterRow, button.apply-btn,
+    button[onclick*="shiftDateRange"], button[onclick*="downloadPDF"],
+    button[onclick*="downloadExcel"], .col-dropdown-btn, #prevBtn,
+    #productPrevBtn, .table-header button, #budgetArrow { display: none !important; }
+    .kpi-grid { grid-template-columns: repeat(4, 1fr) !important; }
+    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
+    .table-section { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
+    table { font-size: 9px !important; }
+    th, td { padding: 4px 6px !important; }
+    #lineChartWrap { max-height: 200px; }
+    .budget-bars { flex-wrap: wrap; }
+    .budget-bar-item { break-inside: avoid; }
+  }
+  </style>
   <div id="campScrollbar" style="overflow-x:auto;overflow-y:hidden;background:var(--bg2);border-top:1px solid var(--border)">
     <div id="campScrollbarInner" style="height:10px"></div>
   </div>
@@ -853,6 +883,7 @@ function setProd(btn) {
   for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
   btn.classList.add('active');
   S.prod = btn.getAttribute('data-prod');
+  S.ch = ['all'];
   var dateFrom = document.getElementById('dateFrom').value;
   var dateTo   = document.getElementById('dateTo').value;
   rebuildRAW(dateFrom, dateTo);
@@ -1646,7 +1677,7 @@ var TABLE_COLS = [
   {key:'cpm',         label:'CPM',    type:'cpc'}
 ];
 var selectedCols = ['cost','revenue','roas','conversions','cpa','cvr','clicks','cpc','ctr','impressions','cpm'];
-var campSelectedCols = ['cost','revenue','roas','conversions','cpa','clicks','ctr','impressions'];
+var campSelectedCols = ['cost','revenue','roas','conversions','cpa','cvr','clicks','cpc','ctr','impressions','cpm'];
 
 function buildCampColDropdown() {
   var html = '';
@@ -2583,6 +2614,7 @@ function setSub(btn, brand) {
   btn.classList.add('active');
   S.sub = btn.getAttribute('data-sub');
   S.prod = 'all';
+  S.ch = ['all'];
   renderWithData();
 }
 
@@ -3227,6 +3259,51 @@ function toggleBudgetSection() {
 }
 
 // 예산 입력 버튼 숨기기 (Sheets에서 읽어오므로 불필요)
+
+// ── 다운로드 기능 ────────────────────────────────────────────────────────────
+
+function downloadPDF() {
+  window.print();
+}
+
+function downloadExcel() {
+  if (typeof XLSX === 'undefined') { alert('라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+  var wb = XLSX.utils.book_new();
+  var dateFrom = document.getElementById('dateFrom').value;
+  var dateTo   = document.getElementById('dateTo').value;
+
+  function tableToRows(headSel, bodySel) {
+    var rows = [];
+    document.querySelectorAll(headSel + ' tr').forEach(function(tr) {
+      var row = [];
+      tr.querySelectorAll('th').forEach(function(th) { row.push(th.innerText.trim()); });
+      if (row.some(function(c){ return c; })) rows.push(row);
+    });
+    document.querySelectorAll(bodySel + ' tr').forEach(function(tr) {
+      var row = [];
+      tr.querySelectorAll('td').forEach(function(td) { row.push(td.innerText.trim()); });
+      if (row.some(function(c){ return c; })) rows.push(row);
+    });
+    return rows;
+  }
+
+  // 1. 제품별
+  var prodRows = tableToRows('#productTableHead', '#productTbody');
+  if (prodRows.length > 1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(prodRows), '제품별');
+
+  // 2. 매체별
+  var chRows = tableToRows('#mainTable thead', '#mainTable tbody');
+  if (chRows.length > 1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(chRows), '매체별');
+
+  // 3. 캠페인별
+  var campRows = tableToRows('#campTable thead', '#campTable tbody');
+  if (campRows.length > 1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(campRows), '캠페인별');
+
+  if (wb.SheetNames.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
+
+  var brandLabel = {'all':'전체','kitchenaid':'키친에이드','ecovacs':'에코백스','anova':'아노바'}[S.sub] || S.sub;
+  XLSX.writeFile(wb, '하이퍼_광고성과_' + brandLabel + '_' + dateFrom + '_' + dateTo + '.xlsx');
+}
 
 buildMetricSelector();
 buildColDropdown();
