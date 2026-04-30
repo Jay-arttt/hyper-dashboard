@@ -2829,7 +2829,6 @@ var BUDGET_CH_MAP = {
 var BUDGET_BRAND_MAP = [
   {brand:'하이퍼',    sub:'키친에이드',ch:'N.BSA', key:'kitchenaid__nbsa'},
   {brand:'하이퍼',    sub:'키친에이드',ch:'N.SA',  key:'kitchenaid__nsa'},
-  {brand:'하이퍼',    sub:'키친에이드(코드리스)',ch:'N.SA', key:'kitchenaid_codeless__nsa'},
   {brand:'하이퍼',    sub:'키친에이드',ch:'N.GFA', key:'kitchenaid__ngfa'},
   {brand:'하이퍼',    sub:'에코백스',  ch:'N.SA',  key:'ecovacs__nsa'},
   {brand:'하이퍼',    sub:'에코백스',  ch:'N.GFA', key:'ecovacs__ngfa'},
@@ -3022,7 +3021,6 @@ function _renderBudgetBars(ym, budgets) {
     var BUDGET_STRUCTURE = [
       { brand:'하이퍼', subs:[
         { label:'키친에이드',       key:'kitchenaid',         chs:['nbsa','nsa','ngfa'] },
-        { label:'키친에이드<br><span style="font-size:9px;opacity:.7">코드리스</span>', key:'kitchenaid_codeless', chs:['nsa'] },
         { label:'에코백스',         key:'ecovacs',            chs:['nsa','ngfa'] },
         { label:'아노바',           key:'anova',              chs:['nsa','ngfa'] }
       ]}
@@ -3055,6 +3053,11 @@ function _renderBudgetBars(ym, budgets) {
             var hyperKey = sub.key + '__' + chKey;
             var byDateH2 = sheetsCache.hyper[hyperKey] || {};
             spent = sumByDateRange(byDateH2, budgetDateFrom, budgetDateTo).cost || 0;
+            // 키친에이드 NSA는 코드리스 캠페인 소진액도 합산
+            if (sub.key === 'kitchenaid' && chKey === 'nsa') {
+              var byDateCL = sheetsCache.hyper['kitchenaid_codeless__nsa'] || {};
+              spent += sumByDateRange(byDateCL, budgetDateFrom, budgetDateTo).cost || 0;
+            }
           }
 
           // 예산도 0이고 소진도 0이면 표시하지 않음
