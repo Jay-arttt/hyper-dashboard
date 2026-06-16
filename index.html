@@ -239,6 +239,7 @@ tbody td:first-child { text-align: left; font-family: 'Noto Sans KR', sans-serif
     <button class="tab" data-sub="kitchenaid" onclick="setSub(this,'hyper')">키친에이드</button>
     <button class="tab" data-sub="ecovacs" onclick="setSub(this,'hyper')">에코백스</button>
     <button class="tab" data-sub="anova" onclick="setSub(this,'hyper')">아노바</button>
+    <button class="tab" data-sub="insta360" onclick="setSub(this,'hyper')">인스타360</button>
   </div>
 </div>
 
@@ -454,7 +455,7 @@ function addToHierarchy(hier, camp, group, creative, dateStr, dateFrom, dateTo, 
 // 하이퍼 NSA 계층
 function aggregateHyperNSAHierarchy(rows, dateFrom, dateTo) {
   var out = {};
-  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova','인스타360':'insta360'};
   var PROD_FILTER = S.prod === 'all' ? null : S.prod;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
@@ -478,7 +479,7 @@ function aggregateHyperNSAHierarchy(rows, dateFrom, dateTo) {
 // 하이퍼 NGFA 계층
 function aggregateHyperNGFAHierarchy(rows, dateFrom, dateTo) {
   var out = {};
-  var BK = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  var BK = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'},{keyword:'인스타360',key:'insta360'}];
   var PROD_FILTER = S.prod === 'all' ? null : S.prod;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
@@ -526,7 +527,7 @@ function getCampaignHierarchy(brKey, chKey, dateFrom, dateTo) {
 // 하이퍼 NSA → 캠페인별
 function aggregateHyperNSACampaign(rows, dateFrom, dateTo) {
   var out = {};
-  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova','인스타360':'insta360'};
   var PROD_FILTER = S.prod === 'all' ? null : S.prod;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
@@ -553,7 +554,7 @@ function aggregateHyperNSACampaign(rows, dateFrom, dateTo) {
 // 하이퍼 NGFA → 캠페인별
 function aggregateHyperNGFACampaign(rows, dateFrom, dateTo) {
   var out = {};
-  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'},{keyword:'인스타360',key:'insta360'}];
   var PROD_FILTER = S.prod === 'all' ? null : S.prod;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
@@ -648,13 +649,13 @@ function rebuildRAW(dateFrom, dateTo) {
   if (!sheetsCache.hyper) return;
   var prevRange = getPrevRange(dateFrom, dateTo);
 
-  var HYPER_BRANDS = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova'];
+  var HYPER_BRANDS = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova', 'insta360'];
   for (var bi = 0; bi < HYPER_BRANDS.length; bi++) {
     RAW[HYPER_BRANDS[bi]]  = {};
     PREV[HYPER_BRANDS[bi]] = {};
   }
 
-  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova','인스타360':'insta360'};
   var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
   var PROD_FILTER  = S.prod === 'all' ? null : S.prod;
 
@@ -741,7 +742,7 @@ function renderWithData() {
 // 하이퍼 네이버SA: 브랜드 컬럼 + 캠페인유형으로 분리
 function aggregateHyperNSA(rows) {
   var out = {};
-  var BRAND_MAP = {'키친에이드': 'kitchenaid', '에코백스': 'ecovacs', '아노바': 'anova'};
+  var BRAND_MAP = {'키친에이드': 'kitchenaid', '에코백스': 'ecovacs', '아노바': 'anova', '인스타360': 'insta360'};
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     var dateStr = (r['일자'] || '').slice(0, 10);
@@ -844,7 +845,7 @@ var productSelectedCols = ['cost','revenue','roas','conversions','cpa','cvr','cl
 function buildProductTabs() {
   if (!sheetsCache.hyper) return;
   var raw = sheetsCache.hyper;
-  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
+  var BRAND_MAP = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova','인스타360':'insta360'};
   var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
   var prods = {};
 
@@ -854,7 +855,7 @@ function buildProductTabs() {
     var p = (r['제품']||'').trim();
     if (p) prods[p] = true;
   });
-  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'},{keyword:'인스타360',key:'insta360'}];
   (raw._rawNGFA || []).forEach(function(r) {
     var p = (r['제품']||'').trim();
     if (!p) return;
@@ -954,8 +955,8 @@ function aggregateByBrandProductRange(dateFrom, dateTo) {
   if (!sheetsCache.hyper) return {};
   var raw = sheetsCache.hyper;
   var out = {};
-  var BRAND_MAP   = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova'};
-  var BRAND_LABEL = {'kitchenaid':'키친에이드','ecovacs':'에코백스','anova':'아노바'};
+  var BRAND_MAP   = {'키친에이드':'kitchenaid','에코백스':'ecovacs','아노바':'anova','인스타360':'insta360'};
+  var BRAND_LABEL = {'kitchenaid':'키친에이드','ecovacs':'에코백스','anova':'아노바','insta360':'인스타360'};
   var BRAND_FILTER = S.sub === 'all' ? null : S.sub;
   var PROD_FILTER  = S.prod === 'all' ? null : S.prod;
 
@@ -988,7 +989,7 @@ function aggregateByBrandProductRange(dateFrom, dateTo) {
     add(out[brKey]._total, row);
   });
 
-  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'}];
+  var BRAND_KEYWORDS = [{keyword:'키친에이드',key:'kitchenaid'},{keyword:'에코백스',key:'ecovacs'},{keyword:'아노바',key:'anova'},{keyword:'인스타360',key:'insta360'}];
   (raw._rawNGFA || []).forEach(function(r) {
     if (CK && CK.indexOf('ngfa') === -1) return; // 매체 필터
     var rawDate = r['일별']||'';
@@ -1019,7 +1020,7 @@ function renderProductTable() {
   var byBrand = aggregateByBrandProductRange(dateFrom, dateTo);
   var prevData = productPrevMode ? aggregateByBrandProductPrev(dateFrom, dateTo) : null;
 
-  var BRAND_ORDER = S.sub === 'all' ? ['kitchenaid','ecovacs','anova'] : [S.sub];
+  var BRAND_ORDER = S.sub === 'all' ? ['kitchenaid','ecovacs','anova','insta360'] : [S.sub];
   var hasAny = BRAND_ORDER.some(function(br){ return !!byBrand[br]; });
   var section = document.getElementById('productTableSection');
   if (!hasAny) { section.style.display = 'none'; return; }
@@ -1169,8 +1170,8 @@ var PREV = {};
   }
 })();
 
-var HYPER_SUBS     = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova'];
-var ALL_BRANDS = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova'];
+var HYPER_SUBS     = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova', 'insta360'];
+var ALL_BRANDS = ['kitchenaid', 'kitchenaid_codeless', 'ecovacs', 'anova', 'insta360'];
 var CHS = ['meta', 'google', 'kakao', 'ngfa', 'nsa', 'nbsa'];
 var CH_NAME  = {meta: 'Meta', google: 'Google', kakao: 'Kakao', ngfa: '네이버 GFA', nsa: '네이버 SA', nbsa: '네이버 BSA'};
 var CH_COLOR = {meta: 'var(--meta)', google: 'var(--google)', kakao: 'var(--kakao)', ngfa: 'var(--ngfa)', nsa: 'var(--nsa)', nbsa: 'var(--nbsa)'};
@@ -2833,7 +2834,9 @@ var BUDGET_BRAND_MAP = [
   {brand:'하이퍼',    sub:'에코백스',  ch:'N.SA',  key:'ecovacs__nsa'},
   {brand:'하이퍼',    sub:'에코백스',  ch:'N.GFA', key:'ecovacs__ngfa'},
   {brand:'하이퍼',    sub:'아노바',    ch:'N.SA',  key:'anova__nsa'},
-  {brand:'하이퍼',    sub:'아노바',    ch:'N.GFA', key:'anova__ngfa'}
+  {brand:'하이퍼',    sub:'아노바',    ch:'N.GFA', key:'anova__ngfa'},
+  {brand:'하이퍼',    sub:'인스타360',  ch:'N.SA',  key:'insta360__nsa'},
+  {brand:'하이퍼',    sub:'인스타360',  ch:'N.GFA', key:'insta360__ngfa'}
 ];
 
 // 예산 기간 상태
@@ -3022,7 +3025,8 @@ function _renderBudgetBars(ym, budgets) {
       { brand:'하이퍼', subs:[
         { label:'키친에이드',       key:'kitchenaid',         chs:['nbsa','nsa','ngfa'] },
         { label:'에코백스',         key:'ecovacs',            chs:['nsa','ngfa'] },
-        { label:'아노바',           key:'anova',              chs:['nsa','ngfa'] }
+        { label:'아노바',           key:'anova',              chs:['nsa','ngfa'] },
+        { label:'인스타360',         key:'insta360',           chs:['nsa','ngfa'] }
       ]}
     ];
 
@@ -3304,7 +3308,7 @@ function downloadExcel() {
 
   if (wb.SheetNames.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
 
-  var brandLabel = {'all':'전체','kitchenaid':'키친에이드','ecovacs':'에코백스','anova':'아노바'}[S.sub] || S.sub;
+  var brandLabel = {'all':'전체','kitchenaid':'키친에이드','ecovacs':'에코백스','anova':'아노바','insta360':'인스타360'}[S.sub] || S.sub;
   XLSX.writeFile(wb, '하이퍼_광고성과_' + brandLabel + '_' + dateFrom + '_' + dateTo + '.xlsx');
 }
 
